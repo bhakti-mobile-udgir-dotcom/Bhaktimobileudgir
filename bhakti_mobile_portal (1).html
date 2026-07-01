@@ -1,0 +1,2544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhakti Mobile and Repairing Center, Udgir</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Yantramanav for Marathi styling -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Yantramanav:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Yantramanav', sans-serif;
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-receipt-section, #print-receipt-section * {
+                visibility: visible;
+            }
+            #print-receipt-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+
+    <script>
+        const seedJobs = [
+            { id: "BM-8801", name: "Rahul Shinde", phone: "9876543210", device: "Realme 11 Pro", issue: "Screen Replacement", cost: "3500", advance: "500", status: "Ready for Pickup", date: "2026-06-28" },
+            { id: "BM-8802", name: "Priya Patil", phone: "9123456789", device: "Samsung A54", issue: "Battery Drain", cost: "1400", advance: "0", status: "Repairing", date: "2026-06-29" },
+            { id: "BM-8803", name: "Aniket Biradar", phone: "8888777766", device: "Redmi Note 12", issue: "Charging Port Fix", cost: "850", advance: "200", status: "Diagnosing", date: "2026-06-30" }
+        ];
+
+        if (!localStorage.getItem('bhakti_jobs')) {
+            localStorage.setItem('bhakti_jobs', JSON.stringify(seedJobs));
+        }
+
+        // Initialize Owner Security PIN (Default is 9422 derived from store phone number)
+        if (!localStorage.getItem('bhakti_owner_pin')) {
+            localStorage.setItem('bhakti_owner_pin', '9422');
+        }
+
+        // Default Customizable Business Details Profile
+        const defaultBizInfo = {
+            name_en: "BHAKTI MOBILE & REPAIRING CENTER",
+            name_mr: "भक्ती मोबाईल & रिपेरिंग सेंटर",
+            tagline_en: "Premium Hardware Repair & Accessories Hub",
+            tagline_mr: "प्रिमियम हार्डवेअर रिपेअर आणि ॲक्सेसरीज हब",
+            phone1: "+91 90495 55270",
+            phone2: "+91 91305 56607",
+            whatsapp: "9049555270", 
+            address_en: "CHHATRAPATI SHIVAJI MAHARAJ CHOWK,RAJESHWARI COMPLEX, NANDED-BIDAR ROAD, UDGIR",
+            address_mr: "छत्रपति शिवाजी महाराज चौक, राजेश्वरी कॉम्प्लेक्स, नांदेड-बीदर रोड, उदगीर, जिल्हा- लातूर, महाराष्ट्र , ४१३५१७",
+            address_full_en: "CHHATRAPATI SHIVAJI MAHARAJ CHOWK,RAJESHWARI COMPLEX, NANDED-BIDAR ROAD, UDGIR, Dist. Latur, Maharashtra - 413517",
+            address_full_mr: "मोंढा रोड, शेतकी निवास जवळ, यशवंत कॉलनी, उदगीर, जि. लातूर, महाराष्ट्र - ४१३५१७",
+            hours_en: "09:00 AM - 11:00 PM ",
+            hours_mr: "सकाळी ०९:०० ते रात्री ११:०० ",
+            hours_full_en: "Monday - Sunday: 09:00 AM to 11:00 PM ",
+            hours_full_mr: "सोमवार - रविवार: सकाळी ०९:०० ते रात्री ११:०० ",
+            term1_en: "1. Please bring this receipt when collecting your mobile device.",
+            term1_mr: "१. कृपया मोबाईल घेऊन जाताना ही मूळ पावती सोबत आणावी.",
+            term2_en: "2. Bhakti Mobile is not responsible for secondary motherboard issues during deep diagnostics.",
+            term2_mr: "२. मोबाईलच्या अंतर्गत सुट्या भागांच्या नादुरुस्तीस किंवा अनपेक्षित बिघाडास दुकान जबाबदार राहणार नाही."
+        };
+
+        if (!localStorage.getItem('bhakti_biz_info')) {
+            localStorage.setItem('bhakti_biz_info', JSON.stringify(defaultBizInfo));
+        }
+
+        // Default Repair Estimator Pricing Setup
+        const defaultBaseRates = {
+            screen: { budget: 1200, mid: 2200, premium: 6500 },
+            battery: { budget: 700, mid: 1100, premium: 2400 },
+            charging: { budget: 250, mid: 400, premium: 850 },
+            camera: { budget: 350, mid: 750, premium: 1800 },
+            software: { budget: 250, mid: 350, premium: 600 },
+            motherboard: { budget: 600, mid: 1200, premium: 3000 }
+        };
+
+        const defaultBrandMultipliers = {
+            xiaomi: 1.00,
+            samsung: 1.15,
+            realme: 1.00,
+            vivo: 1.05,
+            oppo: 1.05,
+            oneplus: 1.25,
+            iphone: 1.50
+        };
+
+        if (!localStorage.getItem('bhakti_repair_rates')) {
+            localStorage.setItem('bhakti_repair_rates', JSON.stringify(defaultBaseRates));
+        }
+        if (!localStorage.getItem('bhakti_brand_multipliers')) {
+            localStorage.setItem('bhakti_brand_multipliers', JSON.stringify(defaultBrandMultipliers));
+        }
+
+        // Custom notification system
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const alertBox = document.createElement('div');
+            alertBox.className = `flex items-center p-4 mb-4 text-sm rounded-lg shadow-lg border transition-all duration-300 transform translate-y-2 opacity-0 ${
+                type === 'success' 
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                    : type === 'warning'
+                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : 'bg-rose-50 text-rose-800 border-rose-200'
+            }`;
+            
+            alertBox.innerHTML = `
+                <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : type === 'warning' ? 'fa-circle-exclamation' : 'fa-circle-xmark'} mr-3 text-lg"></i>
+                <div><span class="font-bold">System:</span> ${message}</div>
+            `;
+            
+            container.appendChild(alertBox);
+            
+            setTimeout(() => {
+                alertBox.classList.remove('opacity-0', 'translate-y-2');
+            }, 10);
+
+            setTimeout(() => {
+                alertBox.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => alertBox.remove(), 300);
+            }, 4000);
+        }
+    </script>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed bottom-5 right-5 z-[150] flex flex-col space-y-2 max-w-sm w-full px-4"></div>
+
+    <header class="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-2 flex flex-wrap justify-between items-center text-xs border-b border-indigo-900">
+            <div class="flex items-center space-x-4">
+                <span id="top-bar-address"><i class="fa-solid fa-location-dot text-amber-400 mr-1"></i> <span id="top-bar-address-text">Mondha Road, Near Shetki Nivas, Udgir</span></span>
+                <span class="hidden md:inline" id="top-bar-hours"><i class="fa-solid fa-clock text-amber-400 mr-1"></i> <span id="top-bar-hours-text">10:00 AM - 09:00 PM (Sunday Closed)</span></span>
+            </div>
+            <div class="flex items-center space-x-3 mt-1 sm:mt-0">
+                <a href="tel:+919422927694" id="top-bar-phone-link" class="hover:text-amber-400 transition"><span id="top-bar-phone-text"><i class="fa-solid fa-phone text-amber-400 mr-1"></i> +91 94229 27694</span></a>
+                
+                <!-- Profile Setup Action -->
+                <button onclick="openSettingsModal()" class="bg-amber-500 hover:bg-amber-600 px-3 py-1 rounded-full text-[11px] text-slate-950 font-bold transition flex items-center space-x-1">
+                    <i class="fa-solid fa-gear"></i>
+                    <span id="settings-btn-text">Edit Shop Profile & Pricing</span>
+                </button>
+                <!-- Localization State Toggle -->
+                <button onclick="toggleLanguage()" class="bg-indigo-800 hover:bg-indigo-700 px-3 py-1 rounded-full text-[11px] font-semibold transition border border-indigo-600 flex items-center space-x-1">
+                    <i class="fa-solid fa-language"></i>
+                    <span id="lang-btn-text">मराठी</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Navigation -->
+        <nav class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500 text-slate-900 p-2.5 rounded-xl shadow-lg flex items-center justify-center animate-pulse">
+                    <i class="fa-solid fa-screwdriver-wrench text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight flex items-center gap-2" id="nav-brand-title">
+                        BHAKTI MOBILE
+                        <span class="text-xs bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Udgir</span>
+                    </h1>
+                    <p class="text-xs text-indigo-200 tracking-wide font-medium" id="brand-tagline">Premium Hardware Repair & Accessories Hub</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-center gap-2 md:gap-4">
+                <a href="#services" class="px-3 py-2 text-sm font-semibold rounded-lg hover:bg-indigo-900 transition text-slate-100" id="nav-services">Services</a>
+                <a href="#estimator" class="px-3 py-2 text-sm font-semibold rounded-lg hover:bg-indigo-900 transition text-slate-100" id="nav-estimator">Cost Estimator</a>
+                <a href="#job-card" class="px-3 py-2 text-sm font-semibold rounded-lg hover:bg-indigo-900 transition text-slate-100" id="nav-jobcard-link">Job Card Panel</a>
+                <a href="#admin-console" class="px-3 py-2 text-sm font-semibold rounded-lg hover:bg-indigo-900 transition text-amber-400" id="nav-console-link">
+                    <i class="fa-solid fa-gauge mr-1"></i>Owner Console
+                </a>
+                <a href="#tracker" class="px-3 py-2 text-sm font-semibold rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition flex items-center space-x-1" id="nav-tracker">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Track Repair</span>
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="relative bg-gradient-to-b from-indigo-950 to-slate-900 text-white overflow-hidden py-12 md:py-20 px-4">
+        <div class="absolute top-10 left-1/4 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-10 right-10 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+            <div class="lg:col-span-7 space-y-6">
+                <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-semibold px-4 py-1.5 rounded-full uppercase tracking-widest inline-flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                    <span id="hero-badge">Udgir's No.1 Professional Mobile Lab</span>
+                </span>
+                
+                <h2 class="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight" id="hero-title">
+                    Express Mobile Repairing <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500">With 100% Trust.</span>
+                </h2>
+                
+                <p class="text-slate-300 text-base md:text-lg max-w-xl" id="hero-desc">
+                    Get instant screen replacement, motherboard fixing, battery swap, and software updates. Handled by expert certified technicians at Mondha Road, Udgir. Check instant quotes and track live statuses below!
+                </p>
+
+                <div class="flex flex-wrap gap-4 pt-2">
+                    <a href="#estimator" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-3.5 rounded-xl shadow-lg hover:shadow-amber-500/20 transition flex items-center justify-center space-x-2 w-full sm:w-auto">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span id="btn-quote">Estimate Repair Cost</span>
+                    </a>
+                    <a id="btn-wa-link" href="https://wa.me/919422927694" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-6 py-3.5 rounded-xl border border-slate-700 hover:border-slate-600 transition flex items-center justify-center space-x-2 w-full sm:w-auto">
+                        <i class="fa-brands fa-whatsapp text-emerald-400 text-lg"></i>
+                        <span id="btn-wa">Direct WhatsApp Chat</span>
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 pt-6 border-t border-slate-800 max-w-lg">
+                    <div class="text-center sm:text-left">
+                        <div class="text-2xl md:text-3xl font-extrabold text-amber-400">10k+</div>
+                        <div class="text-xs text-slate-400" id="stat-1">Happy Customers</div>
+                    </div>
+                    <div class="text-center sm:text-left">
+                        <div class="text-2xl md:text-3xl font-extrabold text-amber-400">1 Hour</div>
+                        <div class="text-xs text-slate-400" id="stat-2">Average Repair Time</div>
+                    </div>
+                    <div class="text-center sm:text-left">
+                        <div class="text-2xl md:text-3xl font-extrabold text-amber-400">100%</div>
+                        <div class="text-xs text-slate-400" id="stat-3">Original Spares</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick tracker box in Hero -->
+            <div class="lg:col-span-5 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl p-6 shadow-2xl">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="bg-indigo-500/10 text-indigo-400 p-3 rounded-2xl">
+                        <i class="fa-solid fa-magnifying-glass text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold" id="hero-track-title">Quick Status Check</h3>
+                        <p class="text-xs text-slate-400" id="hero-track-subtitle">Check your phone's repair journey instantly</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2" id="lbl-jobid">Enter Job Card Number</label>
+                        <div class="relative">
+                            <input type="text" id="quick-track-id" placeholder="e.g., BM-8801" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3.5 pl-4 pr-12 focus:ring-2 focus:ring-amber-500 focus:outline-none placeholder-slate-600 font-bold tracking-widest uppercase">
+                            <button onclick="handleQuickTrack()" class="absolute right-2 top-2 bg-amber-500 hover:bg-amber-600 text-slate-900 w-9 h-9 rounded-lg flex items-center justify-center transition">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-xs text-slate-500 italic" id="track-tip">
+                        💡 Use active Job ID: <span class="text-amber-400 cursor-pointer underline font-mono" onclick="setAndTrack('BM-8801')">BM-8801</span> or <span class="text-amber-400 cursor-pointer underline font-mono" onclick="setAndTrack('BM-8802')">BM-8802</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 py-12 flex-grow space-y-16">
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800" id="qc-1-t">All Brands Repaired</h4>
+                    <p class="text-xs text-slate-500">iPhone, Samsung, Mi, Vivo, Oppo, Realme, OnePlus</p>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800" id="qc-2-t">Quality Guarantee</h4>
+                    <p class="text-xs text-slate-500">Tested components & warranty on eligible repairs</p>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800" id="qc-3-t">Data Privacy Secure</h4>
+                    <p class="text-xs text-slate-500">Your phone data is handled with 100% confidentiality</p>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800" id="qc-4-t">Advanced Lab</h4>
+                    <p class="text-xs text-slate-500">Micro-soldering, OCA lamination, IC level repairs</p>
+                </div>
+            </div>
+        </div>
+
+        <section id="services" class="scroll-mt-24 space-y-8">
+            <div class="text-center max-w-2xl mx-auto space-y-2">
+                <h2 class="text-3xl font-black text-slate-900 tracking-tight" id="services-title">Specialist Mobile Repairing Services</h2>
+                <div class="h-1 w-16 bg-amber-500 mx-auto rounded-full"></div>
+                <p class="text-slate-600 text-sm" id="services-subtitle">Whatever the issue, our certified engineers can solve it rapidly. Standard pricing with genuine spare parts.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Screen Replacement Card -->
+                <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition duration-300">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2" id="s1-title">Premium Screen & Glass Replacement</h3>
+                        <p class="text-slate-600 text-xs leading-relaxed mb-4" id="s1-desc">Premium quality combo/folder replacements with stunning resolution & fluid responsive touch. OCA glass-only replacement also available.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Starts from <strong class="text-slate-800 text-sm">₹1,200</strong></span>
+                        <a href="#estimator" onclick="selectEstimator('screen')" class="text-blue-600 font-semibold hover:underline">Get Price →</a>
+                    </div>
+                </div>
+
+                <!-- Battery Swap Card -->
+                <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-4 group-hover:bg-emerald-600 group-hover:text-white transition duration-300">
+                            <i class="fa-solid fa-battery-three-quarters"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2" id="s2-title">High-Capacity Battery Replacements</h3>
+                        <p class="text-slate-600 text-xs leading-relaxed mb-4" id="s2-desc">Is your phone turning off suddenly or heating up? Get certified high-capacity original batteries with replacement warranty.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Starts from <strong class="text-slate-800 text-sm">₹750</strong></span>
+                        <a href="#estimator" onclick="selectEstimator('battery')" class="text-emerald-600 font-semibold hover:underline">Get Price →</a>
+                    </div>
+                </div>
+
+                <!-- Charging Port Card -->
+                <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl mb-4 group-hover:bg-amber-600 group-hover:text-white transition duration-300">
+                            <i class="fa-solid fa-plug"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2" id="s3-title">Charging Port & Jack Fix</h3>
+                        <p class="text-slate-600 text-xs leading-relaxed mb-4" id="s3-desc">Loose connections? Slow charging? Direct replacement of high-quality charging sockets, type-C interfaces, and micro-USB ports.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Starts from <strong class="text-slate-800 text-sm">₹250</strong></span>
+                        <a href="#estimator" onclick="selectEstimator('charging')" class="text-amber-600 font-semibold hover:underline">Get Price →</a>
+                    </div>
+                </div>
+
+                <!-- Water Damage Card -->
+                <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center text-xl mb-4 group-hover:bg-cyan-600 group-hover:text-white transition duration-300">
+                            <i class="fa-solid fa-droplet"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2" id="s4-title">Water & Liquid Damage Restoration</h3>
+                        <p class="text-slate-600 text-xs leading-relaxed mb-4" id="s4-desc">Did your phone fall in water? Bring it immediately! Ultrasonic motherboard deep-cleaning and drying solutions with chemical wash.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Restoration starts <strong class="text-slate-800 text-sm">₹450</strong></span>
+                        <a href="#estimator" onclick="selectEstimator('water')" class="text-cyan-600 font-semibold hover:underline">Inquire Now →</a>
+                    </div>
+                </div>
+
+                <!-- Motherboard & IC Repair Card -->
+                <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition duration-300">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2" id="s5-title">IC Level & Motherboard Repair</h3>
+                        <p class="text-slate-600 text-xs leading-relaxed mb-4" id="s5-desc">Advanced diagnostic repair for dead phones, audio IC faults, networks, power management IC, and expert micro-soldering work.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Diagnose starts <strong class="text-slate-800 text-sm">₹500</strong></span>
+                        <a href="#estimator" onclick="selectEstimator('motherboard')" class="text-purple-600 font-semibold hover:underline">Inquire Now →</a>
+                    </div>
+                </div>
+
+                <!-- Software & Flashing Card -->
+                <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200 group flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl mb-4 group-hover:bg-rose-600 group-hover:text-white transition duration-300">
+                            <i class="fa-solid fa-code"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 mb-2" id="s6-title">Software Flashing & FRP Unlocking</h3>
+                        <p class="text-slate-600 text-xs leading-relaxed mb-4" id="s6-desc">Logo loop hang, boot-loops, forgot pin patterns, custom ROM issues, flashing services, and FRP account bypass solutions.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Unlocking starts <strong class="text-slate-800 text-sm">₹300</strong></span>
+                        <a href="#estimator" onclick="selectEstimator('software')" class="text-rose-600 font-semibold hover:underline">Get Quote →</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="estimator" class="scroll-mt-24 grid grid-cols-1 lg:grid-cols-12 gap-8 bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+            <div class="lg:col-span-7 p-6 sm:p-10 space-y-6">
+                <div>
+                    <span class="text-amber-600 font-bold text-xs uppercase tracking-widest block mb-1" id="est-sub">Interactive Tool</span>
+                    <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight" id="est-title">Calculate Repair Cost Instantly</h2>
+                    <p class="text-slate-500 text-sm mt-1" id="est-desc">Select your brand and dynamic issue type to calculate immediate custom pricing estimate.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2" id="lbl-brand">Select Phone Brand</label>
+                        <select id="est-brand" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="runCostEstimation()">
+                            <option value="xiaomi">Xiaomi / Redmi / POCO</option>
+                            <option value="samsung">Samsung</option>
+                            <option value="realme">Realme</option>
+                            <option value="vivo">Vivo / iQOO</option>
+                            <option value="oppo">Oppo</option>
+                            <option value="oneplus">OnePlus</option>
+                            <option value="iphone">Apple iPhone</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2" id="lbl-tier">Device Class/Model Tier</label>
+                        <select id="est-tier" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="runCostEstimation()">
+                            <option value="budget">Budget Segment (e.g., Redmi 12, Realme C series)</option>
+                            <option value="mid" selected>Mid-Range Segment (e.g., Galaxy M, OnePlus Nord)</option>
+                            <option value="premium">Premium Flagship (e.g., Galaxy S series, OnePlus Pro)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3" id="lbl-issue">What is the Primary Issue?</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="issues-grid">
+                        <button onclick="toggleIssueSelection('screen', this)" class="issue-btn active p-3 border-2 border-amber-500 bg-amber-500/10 text-slate-900 font-bold rounded-xl text-left text-xs flex flex-col justify-between h-20 transition duration-150">
+                            <i class="fa-solid fa-mobile-screen text-amber-600 text-base"></i>
+                            <span>Broken Screen</span>
+                        </button>
+                        <button onclick="toggleIssueSelection('battery', this)" class="issue-btn p-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-left text-xs flex flex-col justify-between h-20 transition duration-150">
+                            <i class="fa-solid fa-battery-empty text-slate-500 text-base"></i>
+                            <span>Battery Drain / Back Cover Swell</span>
+                        </button>
+                        <button onclick="toggleIssueSelection('charging', this)" class="issue-btn p-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-left text-xs flex flex-col justify-between h-20 transition duration-150">
+                            <i class="fa-solid fa-bolt text-slate-500 text-base"></i>
+                            <span>Charging Port Faulty</span>
+                        </button>
+                        <button onclick="toggleIssueSelection('camera', this)" class="issue-btn p-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-left text-xs flex flex-col justify-between h-20 transition duration-150">
+                            <i class="fa-solid fa-camera text-slate-500 text-base"></i>
+                            <span>Blurry Camera / Cracked Glass</span>
+                        </button>
+                        <button onclick="toggleIssueSelection('software', this)" class="issue-btn p-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-left text-xs flex flex-col justify-between h-20 transition duration-150">
+                            <i class="fa-solid fa-key text-slate-500 text-base"></i>
+                            <span>Pattern Lock / Hang Logo</span>
+                        </button>
+                        <button onclick="toggleIssueSelection('motherboard', this)" class="issue-btn p-3 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-left text-xs flex flex-col justify-between h-20 transition duration-150">
+                            <i class="fa-solid fa-microchip text-slate-500 text-base"></i>
+                            <span>Dead Board / Water Damage</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                    <div class="text-xs text-slate-500 flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-info text-amber-500"></i>
+                        <span id="est-notewriter">Estimates include diagnostic fees & fitting charges.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estimator Receipt Summary Panel -->
+            <div class="lg:col-span-5 bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 p-6 sm:p-10 text-white flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-800">
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <h3 class="text-lg font-bold" id="est-summary-title">Estimation Summary</h3>
+                        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-mono font-bold px-2 py-0.5 rounded-full uppercase border border-emerald-500/30">Live Quote</span>
+                    </div>
+
+                    <div class="space-y-3 font-mono text-sm text-slate-300">
+                        <div class="flex justify-between">
+                            <span id="sm-brand">Selected Brand:</span>
+                            <span class="text-white font-bold capitalize" id="summary-brand">Xiaomi</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span id="sm-tier">Device Category:</span>
+                            <span class="text-white font-bold capitalize" id="summary-tier">Mid Range</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span id="sm-issue">Selected Issue:</span>
+                            <span class="text-amber-400 font-bold" id="summary-issue">Broken Screen</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-4 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-400" id="sm-spare">Spare Part Price:</span>
+                            <span class="font-mono text-slate-200" id="summary-spare-cost">₹1,500</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-400" id="sm-service">Service & Lab Charges:</span>
+                            <span class="font-mono text-slate-200" id="summary-lab-cost">₹350</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-1">
+                        <div class="text-xs text-slate-400" id="est-tot-lbl">Estimated Total (Apx)</div>
+                        <div class="text-3xl font-black text-amber-400 font-mono tracking-tight" id="summary-total">₹1,850</div>
+                    </div>
+                </div>
+
+                <div class="pt-6 space-y-3">
+                    <button onclick="submitInquiryWhatsApp()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black py-3 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/10">
+                        <i class="fa-brands fa-whatsapp text-lg"></i>
+                        <span id="est-btn-send">Book & Fix Now via WhatsApp</span>
+                    </button>
+                    <button onclick="copyEstimateToClipboard()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1 border border-slate-700">
+                        <i class="fa-solid fa-copy"></i>
+                        <span id="est-btn-copy">Copy Estimate to Clipboard</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="job-card" class="scroll-mt-24 space-y-8 bg-white border border-slate-100 rounded-3xl p-6 sm:p-10 shadow-sm">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+                <div>
+                    <span class="text-indigo-600 font-bold text-xs uppercase tracking-widest block mb-1" id="jc-sub">Internal Utility Tool</span>
+                    <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight" id="jc-title">Digital Repair Job Card Generator</h2>
+                    <p class="text-slate-500 text-sm mt-1" id="jc-desc">Owner Panel: Instantly draft mobile intake jobs, assign job IDs, and print dynamic client receipts.</p>
+                </div>
+                <div>
+                    <button onclick="loadDemoJobCard()" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold px-4 py-2.5 rounded-xl transition flex items-center space-x-1">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span id="jc-demo-btn">Load Demo Job Card Details</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                <!-- Inputs form -->
+                <form id="jobcard-form" class="lg:col-span-6 space-y-4" onsubmit="handleGenerateJobCard(event)">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="jc-lbl-name">Customer Name</label>
+                            <input type="text" id="jc-name" required placeholder="Full Name" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="jc-lbl-phone">Mobile Number</label>
+                            <input type="tel" id="jc-phone" required placeholder="10-digit number" pattern="[0-9]{10}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="jc-lbl-device">Device Model</label>
+                            <input type="text" id="jc-device" required placeholder="e.g. Samsung Galaxy S23" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="jc-lbl-prob">Problem / Fault Description</label>
+                            <input type="text" id="jc-issue" required placeholder="e.g. Liquid intake/Screen dead" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="jc-lbl-cost">Total Estimated Charge (₹)</label>
+                            <input type="number" id="jc-cost" required placeholder="Total Amount" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="jc-lbl-adv">Advance Paid (₹)</label>
+                            <input type="number" id="jc-advance" value="0" placeholder="0 if none" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="jc-lbl-status">Initial Status</label>
+                            <select id="jc-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold text-indigo-700">
+                                <option value="Diagnosing">Diagnosing</option>
+                                <option value="Repairing">Repairing</option>
+                                <option value="Ready for Pickup">Ready for Pickup</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex flex-wrap gap-3">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl transition flex-1 flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10">
+                            <i class="fa-solid fa-plus-circle"></i>
+                            <span id="jc-btn-create">Create & Save Job Card</span>
+                        </button>
+                        <button type="button" onclick="resetJobCardForm()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-3 rounded-xl transition">
+                            <span id="jc-btn-reset">Reset Form</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Live Job Card Receipt Preview -->
+                <div class="lg:col-span-6 flex flex-col justify-between bg-slate-50 border border-slate-200 rounded-2xl p-6 relative overflow-hidden" id="print-receipt-section">
+                    <div class="absolute right-0 bottom-0 text-slate-200/50 text-[180px] font-black -mr-16 -mb-24 select-none pointer-events-none">BHAKTI</div>
+                    
+                    <div class="relative z-10 space-y-6">
+                        <div class="flex justify-between items-start border-b border-dashed border-slate-300 pb-4">
+                            <div>
+                                <h3 class="text-lg font-black tracking-tight text-slate-900" id="receipt-brand-name">BHAKTI MOBILE</h3>
+                                <p class="text-[10px] text-slate-500" id="receipt-brand-address">Mondha Road, Yashwant Colony, Udgir</p>
+                                <p class="text-[10px] text-slate-500" id="receipt-brand-contact">Contact: +91 94229 27694</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs bg-slate-900 text-white font-mono px-2 py-1 rounded-md uppercase font-bold tracking-wider" id="receipt-id">BM-8801</span>
+                                <p class="text-[9px] text-slate-400 mt-1" id="receipt-date-lbl">Intake Date: <span id="receipt-date" class="font-bold">2026-06-30</span></p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 text-xs border-b border-dashed border-slate-300 pb-4">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block uppercase font-bold" id="rc-lbl-cust">Customer Name</span>
+                                <span id="receipt-name" class="font-bold text-slate-900 text-sm">Rahul Shinde</span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block uppercase font-bold" id="rc-lbl-ph">Phone Number</span>
+                                <span id="receipt-phone" class="font-mono text-slate-800 font-semibold">9876543210</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 text-xs border-b border-dashed border-slate-300 pb-4">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500 font-medium" id="rc-lbl-dev">In-Warranty Device Model:</span>
+                                <span id="receipt-device" class="font-bold text-slate-900">Realme 11 Pro</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500 font-medium" id="rc-lbl-defect">Reported Defect:</span>
+                                <span id="receipt-issue" class="font-bold text-indigo-700">Screen Replacement</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500 font-medium" id="rc-lbl-stats">Device Status:</span>
+                                <span id="receipt-status" class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]">Ready for Pickup</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-200/50 p-4 rounded-xl text-xs space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-slate-600" id="rc-lbl-tot">Repair Estimate</span>
+                                <span class="font-bold font-mono text-slate-900" id="receipt-cost">₹3,500</span>
+                            </div>
+                            <div class="flex justify-between text-emerald-700">
+                                <span id="rc-lbl-adv-paid">Advance Paid</span>
+                                <span class="font-bold font-mono" id="receipt-advance">₹500</span>
+                            </div>
+                            <div class="flex justify-between border-t border-slate-300 pt-2 text-sm font-bold text-slate-900">
+                                <span id="rc-lbl-bal">Balance Due</span>
+                                <span class="font-mono text-indigo-600 text-base" id="receipt-balance">₹3,000</span>
+                            </div>
+                        </div>
+
+                        <div class="text-[9px] text-slate-400 space-y-1">
+                            <p class="font-bold text-slate-500" id="rc-lbl-terms">Terms & Conditions:</p>
+                            <p id="rc-term1">1. Please bring this receipt when collecting your mobile device.</p>
+                            <p id="rc-term2">2. Bhakti Mobile is not responsible for secondary motherboard issues during deep diagnostics.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-200 flex flex-wrap gap-2 justify-end relative z-10">
+                        <button onclick="shareReceiptWhatsApp()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center space-x-1">
+                            <i class="fa-brands fa-whatsapp"></i>
+                            <span id="rc-btn-share">Send on WhatsApp</span>
+                        </button>
+                        <button onclick="window.print()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center space-x-1 shadow-md shadow-slate-900/10">
+                            <i class="fa-solid fa-print"></i>
+                            <span id="rc-btn-print">Print Job Ticket</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="admin-console" class="scroll-mt-24 space-y-6 bg-slate-900 text-white border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative">
+            <div class="absolute top-6 right-6 flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+                <span class="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase" id="console-live-badge">System Live</span>
+            </div>
+            
+            <div class="border-b border-slate-800 pb-6">
+                <span class="text-amber-400 font-bold text-xs uppercase tracking-widest block mb-1" id="console-sub-lbl">Management Console</span>
+                <h2 class="text-2xl sm:text-3xl font-black tracking-tight" id="console-title-lbl">Bhakti Mobile Repair Job Console</h2>
+                <p class="text-slate-400 text-sm mt-1" id="console-desc-lbl">Real-time control board to update repair statuses, delete entries, and evaluate business metrics dynamically.</p>
+            </div>
+
+            <!-- Operating Metrics Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pb-6 border-b border-slate-800">
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-500 text-xs font-semibold uppercase tracking-wider" id="metric-tot-jobs">Total Intake Jobs</span>
+                    <div class="text-2xl font-black font-mono text-indigo-400 mt-1" id="metric-total-count">0</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-500 text-xs font-semibold uppercase tracking-wider" id="metric-act-rep">Active Repairs</span>
+                    <div class="text-2xl font-black font-mono text-amber-400 mt-1" id="metric-repairing-count">0</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-500 text-xs font-semibold uppercase tracking-wider" id="metric-rdy">Ready for Pickup</span>
+                    <div class="text-2xl font-black font-mono text-emerald-400 mt-1" id="metric-ready-count">0</div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-500 text-xs font-semibold uppercase tracking-wider" id="metric-rev">Expected Revenue</span>
+                    <div class="text-2xl font-black font-mono text-white mt-1" id="metric-revenue-count">₹0</div>
+                </div>
+            </div>
+
+            <!-- Search, Filter & Quick Console Tools -->
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between pt-2">
+                <div class="relative w-full md:w-80">
+                    <input type="text" id="console-search" placeholder="Search by ID, name or phone..." class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3.5 pl-10 pr-4 focus:ring-2 focus:ring-amber-500 focus:outline-none text-xs" oninput="renderConsoleJobs()">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-4 text-slate-500 text-sm"></i>
+                </div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <select id="console-filter-status" class="bg-slate-950 border border-slate-800 text-slate-300 rounded-xl px-4 py-3 text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none w-full md:w-auto" onchange="renderConsoleJobs()">
+                        <option value="all">All Statuses</option>
+                        <option value="Diagnosing">Diagnosing</option>
+                        <option value="Repairing">Repairing</option>
+                        <option value="Ready for Pickup">Ready for Pickup</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic Jobs Table Container -->
+            <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-900 text-slate-400 border-b border-slate-800 font-bold">
+                            <th class="p-4" id="th-id">Job ID</th>
+                            <th class="p-4" id="th-cust">Customer / Contact</th>
+                            <th class="p-4" id="th-dev">Device Model</th>
+                            <th class="p-4" id="th-defect">Problem</th>
+                            <th class="p-4" id="th-finance">Est / Adv (Bal)</th>
+                            <th class="p-4" id="th-status">Change/Update Status</th>
+                            <th class="p-4 text-right" id="th-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="console-jobs-tbody" class="divide-y divide-slate-900">
+                        <!-- Filled Dynamically -->
+                    </tbody>
+                </table>
+                <div id="console-empty-state" class="hidden text-center py-12 text-slate-500 space-y-2">
+                    <i class="fa-solid fa-folder-open text-3xl"></i>
+                    <p id="console-empty-text">No active job card records match your query.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="tracker" class="scroll-mt-24 space-y-8">
+            <div class="text-center max-w-2xl mx-auto space-y-2">
+                <h2 class="text-3xl font-black text-slate-900 tracking-tight" id="tr-title">Live Device Status Tracker</h2>
+                <div class="h-1 w-16 bg-amber-500 mx-auto rounded-full"></div>
+                <p class="text-slate-600 text-sm" id="tr-subtitle">Track the diagnostic stage and active physical progress of your gadget.</p>
+            </div>
+
+            <div class="bg-white border border-slate-100 rounded-3xl p-6 sm:p-10 shadow-sm max-w-3xl mx-auto">
+                <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2" id="tr-lbl-input">Track using Job Card / Ticket ID</label>
+                        <input type="text" id="track-id-input" placeholder="e.g., BM-8801" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold tracking-widest focus:ring-2 focus:ring-indigo-500 focus:outline-none uppercase">
+                    </div>
+                    <div class="sm:pt-6">
+                        <button onclick="executeStatusTrack()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3.5 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <span id="tr-btn-submit">Track Status</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Results State View -->
+                <div id="tracker-result" class="hidden space-y-8 animate-fade-in">
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                            <span class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider block" id="tr-res-hdr">Search Results for Job ID:</span>
+                            <span id="tr-res-id" class="text-xl font-mono font-black text-indigo-950">BM-8801</span>
+                        </div>
+                        <div class="space-y-1 text-right">
+                            <div class="text-sm font-bold text-slate-800" id="tr-res-device">Realme 11 Pro</div>
+                            <div class="text-xs text-slate-500" id="tr-res-cust">Client: <span class="font-semibold" id="tr-res-name">Rahul Shinde</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Progress Timeline / Stepper indicator -->
+                    <div class="relative pl-8 space-y-12 before:absolute before:bottom-2 before:top-2 before:left-3.5 before:w-1 before:bg-slate-100">
+                        
+                        <!-- Step 1: Intake -->
+                        <div class="relative flex gap-4" id="step-intake">
+                            <div class="absolute -left-[27px] w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs border-4 border-white shadow-sm" id="step-indicator-intake">
+                                <i class="fa-solid fa-check text-[10px]"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800" id="st1-title">Device Registered & Received</h4>
+                                <p class="text-xs text-slate-500 mt-1" id="st1-desc">We intake the handset and perform structural checklist inspection.</p>
+                                <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold font-mono mt-2 inline-block" id="st1-time">Intake Checked</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Diagnostic -->
+                        <div class="relative flex gap-4" id="step-diagnosing">
+                            <div class="absolute -left-[27px] w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs border-4 border-white shadow-sm" id="step-indicator-diagnosing">
+                                <i class="fa-solid fa-magnifying-glass text-[9px]"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-400" id="st2-title">In-Depth Lab Diagnostics</h4>
+                                <p class="text-xs text-slate-400 mt-1" id="st2-desc">Technicians analyze system voltages, physical issues & test subcomponents.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Repairing -->
+                        <div class="relative flex gap-4" id="step-repairing">
+                            <div class="absolute -left-[27px] w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs border-4 border-white shadow-sm" id="step-indicator-repairing">
+                                <i class="fa-solid fa-screwdriver-wrench text-[9px]"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-400" id="st3-title">Repair in Progress</h4>
+                                <p class="text-xs text-slate-400 mt-1" id="st3-desc">Installing original replacement spare parts, micro-soldering, or updating ROM software.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Ready -->
+                        <div class="relative flex gap-4" id="step-ready">
+                            <div class="absolute -left-[27px] w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs border-4 border-white shadow-sm" id="step-indicator-ready">
+                                <i class="fa-solid fa-circle-check text-[10px]"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-400" id="st4-title">Tested & Ready for Pickup</h4>
+                                <p class="text-xs text-slate-400 mt-1" id="st4-desc">Handset has passed standard post-repair testing checklist and is boxed up ready for handover.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tracker-empty-state" class="text-center py-10 space-y-4">
+                    <div class="text-slate-300 text-6xl">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-slate-700" id="tr-emp-title">No Search Query Run</h4>
+                        <p class="text-slate-500 text-xs" id="tr-emp-subtitle">Enter any valid Ticket/Job Card ID above to preview active progress.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+            <div class="lg:col-span-6 p-6 sm:p-10 space-y-6">
+                <div>
+                    <span class="text-indigo-600 font-bold text-xs uppercase tracking-widest block mb-1" id="ct-sub">Visit Us Today</span>
+                    <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight" id="ct-title">Reach Bhakti Mobile, Udgir</h2>
+                    <p class="text-slate-500 text-sm mt-1" id="ct-desc">Drop by our repair lab or message us. We're situated at Mondha Road for fast access.</p>
+                </div>
+
+                <div class="space-y-4 text-sm text-slate-700">
+                    <div class="flex items-start space-x-3">
+                        <div class="text-amber-500 text-lg mt-0.5"><i class="fa-solid fa-location-dot"></i></div>
+                        <div>
+                            <strong class="text-slate-900" id="ct-addr-lbl">Store Address</strong>
+                            <p class="text-slate-600 text-xs mt-1" id="ct-addr-desc">Mondha Road, Near Shetki Nivas, Yashwant Colony, Udgir, Dist. Latur, Maharashtra - 413517</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-3">
+                        <div class="text-indigo-500 text-lg mt-0.5"><i class="fa-solid fa-headset"></i></div>
+                        <div>
+                            <strong class="text-slate-900" id="ct-ph-lbl">Customer Support Hotline</strong>
+                            <p class="text-slate-600 text-xs mt-1" id="ct-ph-desc">+91 94229 27694 / +91 98341 68132</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-3">
+                        <div class="text-emerald-500 text-lg mt-0.5"><i class="fa-solid fa-clock"></i></div>
+                        <div>
+                            <strong class="text-slate-900" id="ct-time-lbl">Business Hours</strong>
+                            <p class="text-slate-600 text-xs mt-1" id="ct-time-desc">Monday - Saturday: 10:00 AM to 09:00 PM<br>Sunday: Closed</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex gap-3">
+                    <a href="https://www.google.com/maps/search/?api=1&query=Bhakti+Mobile+Shopee+Mondha+Road+Yashwant+Colony+Udgir" target="_blank" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-6 py-3 rounded-xl transition flex items-center space-x-2">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        <span id="ct-btn-map">Open Location on Google Maps</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="lg:col-span-6 bg-slate-100 min-h-[300px] relative">
+                <!-- Live OpenStreetMap Interactive Iframe representation -->
+                <iframe 
+                    class="absolute inset-0 w-full h-full border-0"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=77.1100%2C18.3880%2C77.1250%2C18.3980&amp;layer=mapnik&amp;marker=18.3917%2C77.1186"
+                    allowfullscreen>
+                </iframe>
+                <div class="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm p-3 rounded-xl shadow border border-slate-200/50 flex justify-between items-center text-xs">
+                    <div>
+                        <strong class="font-extrabold text-slate-800">Mondha Road, Udgir</strong>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Near Shetki Nivas, Yashwant Colony</p>
+                    </div>
+                    <a href="https://www.google.com/maps/search/?api=1&query=Bhakti+Mobile+Shopee+Mondha+Road+Yashwant+Colony+Udgir" target="_blank" class="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] transition">
+                        Navigate
+                    </a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-slate-300 border-t border-indigo-950">
+        <div class="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+            <div class="space-y-4">
+                <div class="flex items-center space-x-3 text-white">
+                    <div class="bg-amber-500 text-slate-950 p-2 rounded-lg"><i class="fa-solid fa-screwdriver-wrench text-lg"></i></div>
+                    <span class="font-extrabold text-lg" id="ft-brand-name">BHAKTI MOBILE</span>
+                </div>
+                <p class="text-xs text-slate-400 leading-relaxed" id="ft-about">Your premium choice for standard motherboard repairs, broken touch screens, software unlocking & high-quality phone accessories in Udgir and neighboring sectors.</p>
+            </div>
+            
+            <div class="space-y-4">
+                <h4 class="text-white font-bold uppercase tracking-wider text-xs" id="ft-links-title">Quick Action Navigation</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <a href="#services" class="hover:text-amber-400 transition">Repair Services</a>
+                    <a href="#estimator" class="hover:text-amber-400 transition">Online Quote Engine</a>
+                    <a href="#admin-console" class="hover:text-amber-400 transition">Owner Control Panel</a>
+                    <a href="#job-card" class="hover:text-amber-400 transition">Job Card Creator</a>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h4 class="text-white font-bold uppercase tracking-wider text-xs" id="ft-local-title">Bhakti Mobile Udgir</h4>
+                <p class="text-xs text-slate-400 leading-relaxed" id="ft-local-desc">Mondha Road, Near Shetki Nivas, Yashwant Colony, Udgir, Maharashtra. Serving with dedication and reliable repairing solutions.</p>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 py-6 border-t border-indigo-950/50 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-4">
+            <p id="ft-copy">© 2026 Bhakti Mobile & Repairing Center, Udgir. All Rights Reserved.</p>
+            <p class="flex items-center gap-1">Designed with <i class="fa-solid fa-heart text-rose-500"></i> in Maharashtra.</p>
+        </div>
+    </footer>
+
+    <div id="security-gate-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[120] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 p-6 space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-inner">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="font-extrabold text-xl text-slate-900">Owner Verification Required</h3>
+                <p class="text-xs text-slate-500">Please enter your 4-digit security PIN to access the Profile & Pricing configurator settings.</p>
+            </div>
+            <div class="space-y-4">
+                <div class="flex justify-center">
+                    <input type="password" id="pin-input" maxlength="4" placeholder="••••" class="w-40 text-center tracking-[1.5em] font-black text-2xl bg-slate-50 border border-slate-200 rounded-xl py-3 focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-800">
+                </div>
+                <div id="pin-error-msg" class="text-xs text-rose-600 text-center hidden font-bold">❌ Incorrect security PIN! Try again.</div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeSecurityGate()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition">Cancel</button>
+                <button onclick="verifyOwnerPin()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 rounded-xl transition">Unlock System</button>
+            </div>
+            <div class="text-[10px] text-slate-400 text-center italic">Default PIN is the first 4 digits of shop mobile.</div>
+        </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[130] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 p-6 space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-xl mx-auto">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 class="font-extrabold text-lg text-slate-900" id="del-modal-title">Delete Job Record?</h3>
+                <p class="text-xs text-slate-500" id="del-modal-desc">Are you sure you want to permanently delete this repair card? This action cannot be undone.</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeDeleteConfirmModal()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition">Cancel</button>
+                <button id="del-modal-confirm-btn" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-3 rounded-xl transition">Permanently Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Configurator Panel -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="p-6 bg-gradient-to-r from-indigo-900 to-slate-950 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-amber-500 text-slate-950 p-2.5 rounded-xl">
+                        <i class="fa-solid fa-sliders text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-lg">System Settings & Pricing Configurator</h3>
+                        <p class="text-xs text-slate-300 font-medium">Configure profile info, repair price models, and brand multipliers easily!</p>
+                    </div>
+                </div>
+                <button onclick="closeSettingsModal()" class="text-slate-300 hover:text-white transition p-2 hover:bg-white/10 rounded-xl">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tab Switcher Navigation -->
+            <div class="flex border-b border-slate-200 bg-slate-50 shrink-0 text-xs font-bold">
+                <button onclick="switchSettingsTab('profile')" id="btn-tab-profile" class="flex-1 py-3 text-center text-indigo-600 border-b-2 border-indigo-600 transition flex items-center justify-center space-x-1">
+                    <i class="fa-solid fa-store"></i>
+                    <span>Shop Profile</span>
+                </button>
+                <button onclick="switchSettingsTab('pricing')" id="btn-tab-pricing" class="flex-1 py-3 text-center text-slate-500 border-b-2 border-transparent hover:text-slate-800 hover:bg-slate-100 transition flex items-center justify-center space-x-1">
+                    <i class="fa-solid fa-calculator"></i>
+                    <span>Base Spare Costs (₹)</span>
+                </button>
+                <button onclick="switchSettingsTab('multipliers')" id="btn-tab-multipliers" class="flex-1 py-3 text-center text-slate-500 border-b-2 border-transparent hover:text-slate-800 hover:bg-slate-100 transition flex items-center justify-center space-x-1">
+                    <i class="fa-solid fa-tags"></i>
+                    <span>Brand Multipliers</span>
+                </button>
+            </div>
+            
+            <!-- Scrollable Settings Fields Container -->
+            <div class="p-6 overflow-y-auto space-y-6 text-xs text-slate-700 flex-grow">
+                
+                <!-- Tab 1: Store Profile settings -->
+                <div id="tab-pane-profile" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Store Name (English)</label>
+                            <input type="text" id="cfg-name-en" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Store Name (मराठी)</label>
+                            <input type="text" id="cfg-name-mr" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Tagline (English)</label>
+                            <input type="text" id="cfg-tagline-en" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Tagline (मराठी)</label>
+                            <input type="text" id="cfg-tagline-mr" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Primary Phone</label>
+                            <input type="text" id="cfg-phone1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Secondary Phone</label>
+                            <input type="text" id="cfg-phone2" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">WhatsApp (Numbers Only)</label>
+                            <input type="text" id="cfg-whatsapp" placeholder="e.g. 9422927694" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Short Address Line (English)</label>
+                            <input type="text" id="cfg-address-en" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Short Address Line (मराठी)</label>
+                            <input type="text" id="cfg-address-mr" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Complete Address (English)</label>
+                            <textarea id="cfg-address-full-en" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Complete Address (मराठी)</label>
+                            <textarea id="cfg-address-full-mr" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Short Working Hours (English)</label>
+                            <input type="text" id="cfg-hours-en" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Short Working Hours (मराठी)</label>
+                            <input type="text" id="cfg-hours-mr" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Full Working Hours (English)</label>
+                            <textarea id="cfg-hours-full-en" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold uppercase mb-2">Full Working Hours (मराठी)</label>
+                            <textarea id="cfg-hours-full-mr" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-4 space-y-4">
+                        <h4 class="font-extrabold text-indigo-950 flex items-center space-x-1">
+                            <i class="fa-solid fa-scale-balanced text-amber-500"></i>
+                            <span>Receipt / Job Card Terms & Disclaimer Notes</span>
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-slate-700 font-bold uppercase mb-2">Receipt Note 1 (English)</label>
+                                <input type="text" id="cfg-term1-en" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-slate-700 font-bold uppercase mb-2">Receipt Note 1 (मराठी)</label>
+                                <input type="text" id="cfg-term1-mr" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-slate-700 font-bold uppercase mb-2">Receipt Note 2 (English)</label>
+                                <input type="text" id="cfg-term2-en" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-slate-700 font-bold uppercase mb-2">Receipt Note 2 (मराठी)</label>
+                                <input type="text" id="cfg-term2-mr" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none text-slate-800">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-4 space-y-4">
+                        <h4 class="font-extrabold text-indigo-950 flex items-center space-x-1">
+                            <i class="fa-solid fa-key text-rose-500"></i>
+                            <span>Console Security & Access Control</span>
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-slate-700 font-bold uppercase mb-2">Change 4-Digit Owner PIN</label>
+                                <input type="password" id="cfg-owner-pin" maxlength="4" placeholder="Enter new PIN" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none font-semibold text-slate-800">
+                            </div>
+                            <div class="flex items-end pb-1.5">
+                                <button onclick="lockOwnerConsole()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold py-3 px-4 rounded-xl text-xs transition border border-rose-200 flex items-center justify-center space-x-1">
+                                    <i class="fa-solid fa-lock-open"></i>
+                                    <span>Lock Settings Session</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-slate-100 pt-4 space-y-4">
+                        <h4 class="font-extrabold text-indigo-950 flex items-center space-x-1">
+                            <i class="fa-solid fa-database text-blue-500"></i>
+                            <span>Database Backup & Restore (Offline Hosting Support)</span>
+                        </h4>
+                        <div class="flex flex-wrap gap-4">
+                            <button onclick="exportDatabase()" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 px-4 rounded-xl text-xs transition border border-blue-200 flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-download"></i>
+                                <span id="cfg-btn-export">Export / Backup All Data</span>
+                            </button>
+                            <label class="flex-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-3 px-4 rounded-xl text-xs transition border border-emerald-200 flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-upload"></i>
+                                <span id="cfg-btn-import">Import / Restore Data</span>
+                                <input type="file" id="import-file" class="hidden" accept=".json" onchange="importDatabase(event)">
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-slate-500 leading-relaxed text-center" id="cfg-db-note">Since this app runs entirely in your browser without a backend server, use these buttons to backup your jobs, pricing, and settings to a JSON file. Store this file safely to prevent data loss if you clear browser history or switch devices.</p>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Base Spare Parts Costs Settings (For Cost Estimator Tuning) -->
+                <div id="tab-pane-pricing" class="space-y-6 hidden">
+                    <div class="bg-amber-50 text-amber-800 border border-amber-200 rounded-xl p-4 flex items-start space-x-2">
+                        <i class="fa-solid fa-circle-info text-base mt-0.5"></i>
+                        <div>
+                            <span class="font-bold">Base Cost Tuning:</span>
+                            <p class="mt-0.5 leading-relaxed">Modify base prices below. Estimates calculated dynamically multiply this value with selected Brand multipliers and add standard servicing labor charges (18% + ₹150 fitting fee).</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6 divide-y divide-slate-100">
+                        <!-- Screen Cost Configuration -->
+                        <div class="pt-4 space-y-3">
+                            <h4 class="font-extrabold text-slate-800 flex items-center space-x-1">
+                                <i class="fa-solid fa-mobile-screen-button text-blue-600"></i>
+                                <span>Broken Screen Cost Config (₹)</span>
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Budget segment</label>
+                                    <input type="number" id="rate-screen-budget" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Mid Range</label>
+                                    <input type="number" id="rate-screen-mid" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Premium Segment</label>
+                                    <input type="number" id="rate-screen-premium" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Battery Cost Configuration -->
+                        <div class="pt-4 space-y-3">
+                            <h4 class="font-extrabold text-slate-800 flex items-center space-x-1">
+                                <i class="fa-solid fa-battery-three-quarters text-emerald-600"></i>
+                                <span>Battery Cost Config (₹)</span>
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Budget segment</label>
+                                    <input type="number" id="rate-battery-budget" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Mid Range</label>
+                                    <input type="number" id="rate-battery-mid" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Premium Segment</label>
+                                    <input type="number" id="rate-battery-premium" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charging Port Configuration -->
+                        <div class="pt-4 space-y-3">
+                            <h4 class="font-extrabold text-slate-800 flex items-center space-x-1">
+                                <i class="fa-solid fa-bolt text-amber-500"></i>
+                                <span>Charging Port Cost Config (₹)</span>
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Budget segment</label>
+                                    <input type="number" id="rate-charging-budget" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Mid Range</label>
+                                    <input type="number" id="rate-charging-mid" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Premium Segment</label>
+                                    <input type="number" id="rate-charging-premium" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Camera Configuration -->
+                        <div class="pt-4 space-y-3">
+                            <h4 class="font-extrabold text-slate-800 flex items-center space-x-1">
+                                <i class="fa-solid fa-camera text-sky-500"></i>
+                                <span>Blurry Camera Glass / Unit Config (₹)</span>
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Budget segment</label>
+                                    <input type="number" id="rate-camera-budget" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Mid Range</label>
+                                    <input type="number" id="rate-camera-mid" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Premium Segment</label>
+                                    <input type="number" id="rate-camera-premium" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Software Configuration -->
+                        <div class="pt-4 space-y-3">
+                            <h4 class="font-extrabold text-slate-800 flex items-center space-x-1">
+                                <i class="fa-solid fa-code text-rose-500"></i>
+                                <span>Software / Logo Loop/ Pattern Unlock Config (₹)</span>
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Budget segment</label>
+                                    <input type="number" id="rate-software-budget" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Mid Range</label>
+                                    <input type="number" id="rate-software-mid" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Premium Segment</label>
+                                    <input type="number" id="rate-software-premium" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Motherboard Configuration -->
+                        <div class="pt-4 space-y-3">
+                            <h4 class="font-extrabold text-slate-800 flex items-center space-x-1">
+                                <i class="fa-solid fa-microchip text-purple-600"></i>
+                                <span>IC Level / Dead Motherboard Config (₹)</span>
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Budget segment</label>
+                                    <input type="number" id="rate-motherboard-budget" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Mid Range</label>
+                                    <input type="number" id="rate-motherboard-mid" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                                <div>
+                                    <label class="block text-slate-500 mb-1 font-semibold">Premium Segment</label>
+                                    <input type="number" id="rate-motherboard-premium" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Brand Cost Multipliers (Markup tuning) -->
+                <div id="tab-pane-multipliers" class="space-y-6 hidden">
+                    <div class="bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-xl p-4 flex items-start space-x-2">
+                        <i class="fa-solid fa-circle-info text-base mt-0.5"></i>
+                        <div>
+                            <span class="font-bold">Brand Markup Factors:</span>
+                            <p class="mt-0.5 leading-relaxed">Configure the decimal factor for each major brand. For example, a multiplier of <strong class="text-indigo-950">1.0</strong> represents base pricing, while <strong class="text-indigo-950">1.5</strong> premium factor scales costs up by 50% specifically for that manufacturer's models.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1 uppercase">Xiaomi / Redmi / POCO Multiplier</label>
+                            <input type="number" step="0.05" id="mul-xiaomi" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1 uppercase">Samsung Multiplier</label>
+                            <input type="number" step="0.05" id="mul-samsung" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1 uppercase">Realme Multiplier</label>
+                            <input type="number" step="0.05" id="mul-realme" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1 uppercase">Vivo / iQOO Multiplier</label>
+                            <input type="number" step="0.05" id="mul-vivo" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1 uppercase">Oppo Multiplier</label>
+                            <input type="number" step="0.05" id="mul-oppo" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1 uppercase">OnePlus Multiplier</label>
+                            <input type="number" step="0.05" id="mul-oneplus" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1 uppercase">Apple iPhone Multiplier</label>
+                            <input type="number" step="0.05" id="mul-iphone" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold text-slate-800">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Footer Actions -->
+            <div class="p-6 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-2 justify-end shrink-0">
+                <button onclick="restoreDefaultBizInfo()" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 font-bold text-slate-600 transition">
+                    Restore Defaults
+                </button>
+                <button onclick="saveBusinessInfoAndRates()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/10">
+                    Apply Updates Across System
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = 'en';
+
+        const langData = {
+            en: {
+                brandTagline: "Premium Hardware Repair & Accessories Hub",
+                navServices: "Services",
+                navEstimator: "Cost Estimator",
+                navTracker: "Track Repair",
+                heroBadge: "Udgir's No.1 Professional Mobile Lab",
+                heroTitle: "Express Mobile Repairing <br><span class='text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500'>With 100% Trust.</span>",
+                heroDesc: "Get instant screen replacement, motherboard fixing, battery swap, and software updates. Handled by expert certified technicians at Mondha Road, Udgir. Check instant quotes and track live statuses below!",
+                btnQuote: "Estimate Repair Cost",
+                btnWa: "Direct WhatsApp Chat",
+                stat1: "Happy Customers",
+                stat2: "Average Repair Time",
+                stat3: "Original Spares",
+                heroTrackTitle: "Quick Status Check",
+                heroTrackSubtitle: "Check your phone's repair journey instantly",
+                lblJobid: "Enter Job Card Number",
+                trackTip: "💡 Use active Job ID:",
+                qc1T: "All Brands Repaired",
+                qc2T: "Quality Guarantee",
+                qc3T: "Data Privacy Secure",
+                qc4T: "Advanced Lab",
+                servicesTitle: "Specialist Mobile Repairing Services",
+                servicesSubtitle: "Whatever the issue, our certified engineers can solve it rapidly. Standard pricing with genuine spare parts.",
+                s1Title: "Premium Screen & Glass Replacement",
+                s1Desc: "Premium quality combo/folder replacements with stunning resolution & fluid responsive touch. OCA glass-only replacement also available.",
+                s2Title: "High-Capacity Battery Replacements",
+                s2Desc: "Is your phone turning off suddenly or heating up? Get certified high-capacity original batteries with replacement warranty.",
+                s3Title: "Charging Port & Jack Fix",
+                s3Desc: "Loose connections? Slow charging? Direct replacement of high-quality charging sockets, type-C interfaces, and micro-USB ports.",
+                s4Title: "Water & Liquid Damage Restoration",
+                s4Desc: "Did your phone fall in water? Bring it immediately! Ultrasonic motherboard deep-cleaning and drying solutions with chemical wash.",
+                s5Title: "IC Level & Motherboard Repair",
+                s5Desc: "Advanced diagnostic repair for dead phones, audio IC faults, networks, power management IC, and expert micro-soldering work.",
+                s6Title: "Software Flashing & FRP Unlocking",
+                s6Desc: "Logo loop hang, boot-loops, forgot pin patterns, custom ROM issues, flashing services, and FRP account bypass solutions.",
+                estSub: "Interactive Tool",
+                estTitle: "Calculate Repair Cost Instantly",
+                estDesc: "Select your brand and dynamic issue type to calculate immediate custom pricing estimate.",
+                lblBrand: "Select Phone Brand",
+                lblTier: "Device Class/Model Tier",
+                lblIssue: "What is the Primary Issue?",
+                estNotewriter: "Estimates include diagnostic fees & fitting charges.",
+                estSummaryTitle: "Estimation Summary",
+                smBrand: "Selected Brand:",
+                smTier: "Device Category:",
+                smIssue: "Selected Issue:",
+                smSpare: "Spare Part Price:",
+                smService: "Service & Lab Charges:",
+                estTotLbl: "Estimated Total (Apx)",
+                estBtnSend: "Book & Fix Now via WhatsApp",
+                estBtnCopy: "Copy Estimate to Clipboard",
+                jcSub: "Internal Utility Tool",
+                jcTitle: "Digital Repair Job Card Generator",
+                jcDesc: "Owner Panel: Instantly draft mobile intake jobs, assign job IDs, and print dynamic client receipts.",
+                jcDemoBtn: "Load Demo Job Card Details",
+                jcLblName: "Customer Name",
+                jcLblPhone: "Mobile Number",
+                jcLblDevice: "Device Model",
+                jcLblProb: "Problem / Fault Description",
+                jcLblCost: "Total Estimated Charge (₹)",
+                jcLblAdv: "Advance Paid (₹)",
+                jcLblStatus: "Initial Status",
+                jcBtnCreate: "Create & Save Job Card",
+                jcBtnReset: "Reset Form",
+                rcLblCust: "Customer Name",
+                rcLblPh: "Phone Number",
+                rcLblDev: "In-Warranty Device Model:",
+                rcLblDefect: "Reported Defect:",
+                rcLblStats: "Device Status:",
+                rcLblTot: "Repair Estimate",
+                rcLblAdvPaid: "Advance Paid",
+                rcLblBal: "Balance Due",
+                rcLblTerms: "Terms & Conditions:",
+                rcBtnShare: "Send on WhatsApp",
+                rcBtnPrint: "Print Job Ticket",
+                trTitle: "Live Device Status Tracker",
+                trSubtitle: "Track the diagnostic stage and active physical progress of your gadget.",
+                trLblInput: "Track using Job Card / Ticket ID",
+                trBtnSubmit: "Track Status",
+                trResHdr: "Search Results for Job ID:",
+                st1Title: "Device Registered & Received",
+                st1Desc: "We intake the handset and perform structural checklist inspection.",
+                st1Time: "Intake Checked",
+                st2Title: "In-Depth Lab Diagnostics",
+                st2Desc: "Technicians analyze system voltages, physical issues & test subcomponents.",
+                st3Title: "Repair in Progress",
+                st3Desc: "Installing original replacement spare parts, micro-soldering, or updating ROM software.",
+                st4Title: "Tested & Ready for Pickup",
+                st4Desc: "Handset has passed standard post-repair testing checklist and is boxed up ready for handover.",
+                trEmpTitle: "No Search Query Run",
+                trEmpSubtitle: "Enter any valid Ticket/Job Card ID above to preview active progress.",
+                ctSub: "Visit Us Today",
+                ctDesc: "Drop by our repair lab or message us. We're situated at Mondha Road for fast access.",
+                ctAddrLbl: "Store Address",
+                ctPhLbl: "Customer Support Hotline",
+                ctTimeLbl: "Business Hours",
+                ctBtnMap: "Open Location on Google Maps",
+                ftAbout: "Your premium choice for standard motherboard repairs, broken touch screens, software unlocking & high-quality phone accessories in Udgir and neighboring sectors.",
+                ftLinksTitle: "Quick Action Navigation",
+                ftLocalTitle: "Bhakti Mobile Udgir",
+                ftLocalDesc: "Mondha Road, Near Shetki Nivas, Yashwant Colony, Udgir, Maharashtra. Serving with dedication and reliable repairing solutions.",
+                ftCopy: "© 2026 Bhakti Mobile & Repairing Center, Udgir. All Rights Reserved.",
+                
+                // Job Console elements
+                consoleSub: "Management Console",
+                consoleTitle: "Bhakti Mobile Repair Job Console",
+                consoleDesc: "Real-time control board to update repair statuses, delete entries, and evaluate business metrics dynamically.",
+                metTotJobs: "Total Intake Jobs",
+                metActRep: "Active Repairs",
+                metRdy: "Ready for Pickup",
+                metRev: "Expected Revenue",
+                thId: "Job ID",
+                thCust: "Customer / Contact",
+                thDev: "Device Model",
+                thDefect: "Problem",
+                thFinance: "Est / Adv (Bal)",
+                thStatus: "Change/Update Status",
+                thActions: "Actions"
+            },
+            mr: {
+                brandTagline: "प्रिमियम हार्डवेअर रिपेअर आणि ॲक्सेसरीज हब",
+                navServices: "सेवा",
+                navEstimator: "खर्च अंदाज",
+                navTracker: "रिपेअर ट्रॅकर",
+                heroBadge: "उदगीरची नंबर १ मोबाईल रिपेअरिंग लॅब",
+                heroTitle: "जलद मोबाईल रिपेअरिंग <br><span class='text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500'>१००% विश्वासाने!</span>",
+                heroDesc: "स्क्रीन बदलणे, बॅटरी बदलणे, मदरबोर्ड रिपेअर आणि सॉफ्टवेअर फ्लॅशिंग. उदगीर मधील मोंढा रोड येथील अनुभवी तंत्रज्ञांद्वारे सेवा. त्वरित कोट तपासा आणि थेट प्रगतीचा मागोवा घ्या!",
+                btnQuote: "रिपेअर खर्चाचा अंदाज घ्या",
+                btnWa: "थेट व्हॉट्सॲप चॅट",
+                stat1: "आनंदी ग्राहक",
+                stat2: "सरासरी दुरुस्ती वेळ",
+                stat3: "ओरिजनल सुटे भाग",
+                heroTrackTitle: "त्वरित स्टेटस चेक",
+                heroTrackSubtitle: "तुमच्या मोबाईल दुरुस्तीच्या कामाचा मागोवा घ्या",
+                lblJobid: "जॉब कार्ड नंबर टाका",
+                trackTip: "💡 सक्रिय जॉब आयडी वापरा:",
+                qc1T: "सर्व ब्रँड दुरुस्त केले जातात",
+                qc2T: "गुणवत्ता हमी",
+                qc3T: "डेटा गोपनीयता सुरक्षित",
+                qc4T: "प्रगत लॅबोरेटरी",
+                servicesTitle: "आमच्या विशेष मोबाईल दुरुस्ती सेवा",
+                servicesSubtitle: "काहीही समस्या असो, आमचे तज्ज्ञ इंजिनियर त्यावर तात्काळ मात करतील. ओरिजनल पार्टसह वाजवी दर.",
+                s1Title: "प्रिमियम स्क्रीन व काच बदलणे",
+                s1Desc: "उत्कृष्ट रिझोल्यूशन आणि फ्लुइड टचसह प्रिमियम कॉम्बो/फोल्डर बदलून मिळेल. तसेच ओसीए मशीनद्वारे तुटलेली काच देखील दुरुस्त केली जाते.",
+                s2Title: "हाय-कॅपॅसिटी बॅटरी बदलणे",
+                s2Desc: "मोबाईल लवकर बंद पडतो किंवा गरम होतो का? वॉरंटीसह प्रमाणित ओरिजनल बॅटरी त्वरित बदलून घ्या.",
+                s3Title: "चार्जिंग पोर्ट आणि सॉकेट दुरुस्ती",
+                s3Desc: "कनेक्शन सैल आहे का? स्लो चार्जिंग होते? चांगल्या दर्जाचे चार्जिंग सॉकेट्स, टाईप-सी आणि मायक्रो-यूएसबी पोर्ट थेट बदलून मिळतील.",
+                s4Title: "पाण्यात पडलेला मोबाईल दुरुस्ती (Water Damage)",
+                s4Desc: "मोबाईल पाण्यात पडला आहे का? त्वरित आणा! अल्ट्रासॉनिक मदरबोर्ड डीप क्लिनिंग आणि केमिकल वॉश सोल्यूशन्स उपलब्ध.",
+                s5Title: "आयसी लेव्हल आणि मदरबोर्ड दुरुस्ती",
+                s5Desc: "बंद मोबाईल सुरू करणे, ऑडिओ आयसी फॉल्ट, नेटवर्क समस्या, पॉवर मॅनेजमेंट आयसी आणि तज्ज्ञ मायक्रो-सोल्डरिंग कामे.",
+                s6Title: "सॉफ्टवेअर फ्लॅशिंग आणि एफआरपी अनलॉकिंग",
+                s6Desc: "लोगो लूपमध्ये अडकणे, विसरलेला पिन पॅटर्न लॉक, कस्टम रॉम समस्या, फ्लॅशिंग सेवा आणि एफआरपी अकाउंट बायपास सोल्यूशन्स.",
+                estSub: "इंटेरॅक्टिव्ह टूल",
+                estTitle: "त्वरित रिपेअर खर्च मोजा",
+                estDesc: "तुमचा ब्रँड आणि समस्येचा प्रकार निवडा व त्वरित दुरुस्ती दरांचा अंदाज मिळवा.",
+                lblBrand: "मोबाईल ब्रँड निवडा",
+                lblTier: "मोबाईलचा प्रकार / श्रेणी",
+                lblIssue: "मोबाईलमध्ये मुख्य समस्या काय आहे?",
+                estNotewriter: "अंदाजामध्ये तपासणी फी आणि फिटिंग चार्जेस समाविष्ट आहेत.",
+                estSummaryTitle: "खर्च अंदाजाचा तपशील",
+                smBrand: "निवडलेला ब्रँड:",
+                smTier: "मोबाईल श्रेणी:",
+                smIssue: "समस्येचा प्रकार:",
+                smSpare: "सुट्या भागाची किंमत:",
+                smService: "सर्व्हिस आणि लॅब चार्ज:",
+                estTotLbl: "एकूण अंदाजित खर्च",
+                estBtnSend: "व्हॉट्सॲप वरून दुरुस्ती बुक करा",
+                estBtnCopy: "माहिती क्लिपबोर्डवर कॉपी करा",
+                jcSub: "अंतर्गत व्यवस्थापन साधन",
+                jcTitle: "डिजिटल रिपेअर जॉब कार्ड जनरेटर",
+                jcDesc: "मालकांसाठी पॅनेल: ग्राहकाचे काम त्वरित दाखल करा, जॉब आयडी वाटप करा आणि डिजिटल पावती प्रिंट करा.",
+                jcDemoBtn: "नमुना जॉब कार्ड लोड करा",
+                jcLblName: "ग्राहकाचे नाव",
+                jcLblPhone: "मोबाईल नंबर",
+                jcLblDevice: "मोबाईल मॉडेल",
+                jcLblProb: "समस्येचे वर्णन",
+                jcLblCost: "एकूण अंदाजित खर्च (₹)",
+                jcLblAdv: "ॲडव्हान्स जमा रक्कम (₹)",
+                jcLblStatus: "सुरुवातीची स्थिती",
+                jcBtnCreate: "जॉब कार्ड साठवा आणि पावती दाखवा",
+                jcBtnReset: "पुन्हा भरा",
+                rcLblCust: "ग्राहकाचे नाव",
+                rcLblPh: "मोबाईल नंबर",
+                rcLblDev: "मोबाईल मॉडेल:",
+                rcLblDefect: "समस्या / दोष:",
+                rcLblStats: "सध्याची स्थिती:",
+                rcLblTot: "दुरुस्ती खर्च अंदाज",
+                rcLblAdvPaid: "ॲडव्हान्स जमा रक्कम",
+                rcLblBal: "बाकी रक्कम",
+                rcLblTerms: "अटी व शर्ती:",
+                rcBtnShare: "व्हॉट्सॲप वर पावती पाठवा",
+                rcBtnPrint: "जॉब तिकीट प्रिंट करा",
+                trTitle: "थेट मोबाईल ट्रॅकिंग सिस्टीम",
+                trSubtitle: "तुमच्या मोबाईल दुरुस्तीच्या विविध टप्प्यांचा थेट मागोवा घ्या.",
+                trLblInput: "जॉब कार्ड किंवा तिकीट आयडी टाका",
+                trBtnSubmit: "स्टेटस तपासा",
+                trResHdr: "जॉब आयडी शोध निकाल:",
+                st1Title: "डिव्हाईस दाखल आणि प्राप्त झाला",
+                st1Desc: "आम्ही हँडसेट जमा केला असून त्याची प्राथमिक तपासणी केली आहे.",
+                st1Time: "दाखल केले",
+                st2Title: "खोलवर प्रयोगशाळा तपासणी",
+                st2Desc: "तंत्रज्ञ सिस्टीम व्होल्टेज, प्रत्यक्ष बिघाड आणि इतर घटकांची चाचणी घेत आहेत.",
+                st3Title: "दुरुस्ती प्रगतीपथावर आहे",
+                st3Desc: "ओरिजनल रिप्लेसमेंट पार्ट्स बसवणे किंवा मदरबोर्ड सोल्डरिंग चालू आहे.",
+                st4Title: "चाचणी पूर्ण आणि डिलिव्हरीसाठी तयार",
+                st4Desc: "हँडसेट दुरुस्तीनंतरच्या अंतिम चाचणीतून उत्तीर्ण झाला असून वो डिलिव्हरीसाठी सज्ज आहे.",
+                trEmpTitle: "कोणताही शोध घेतलेला नाही",
+                trEmpSubtitle: "थेट प्रगती पाहण्यासाठी वर कोणताही वैध तिकीट/जॉब कार्ड आयडी प्रविष्ट करा.",
+                ctSub: "आजच भेट द्या",
+                ctTitle: "भक्ती मोबाईल, उदगीर पत्ता",
+                ctDesc: "आमच्या लॅबला भेट द्या किंवा मेसेज करा. जलद दुरुस्तीसाठी आम्ही मोंढा रोड येथील शेतकी निवास जवळ आहोत.",
+                ctAddrLbl: "दुकान पत्ता",
+                ctPhLbl: "ग्राहक सेवा हेल्पलाईन",
+                ctTimeLbl: "कामाची वेळ",
+                ctBtnMap: "गुगल मॅपवर दिशा मार्ग मिळवा",
+                ftAbout: "उदगीर आणि जवळपासच्या परिसरातील प्रिमियम मदरबोर्ड दुरुस्ती, तुटलेले टच स्क्रीन बदलणे, सॉफ्टवेअर अनलॉकिंग आणि सर्वोत्तम मोबाईल ॲक्सेसरीजसाठी तुमचा हक्काचा पर्याय.",
+                ftLinksTitle: "महत्वाच्या लिंक्स",
+                ftLocalTitle: "भक्ती मोबाईल उदगीर",
+                ftLocalDesc: "छत्रपति शिवाजी महाराज चौक, राजेश्वरी कॉम्प्लेक्स, नांदेड-बीदर रोड, उदगीर, महाराष्ट्र. उत्तम सेवेची आमची हमी.",
+                ftCopy: "© २०२६ भक्ती मोबाईल आणि रिपेअरिंग सेंटर, उदगीर. सर्व हक्क राखीव.",
+                
+                // Job Console elements (Marathi)
+                consoleSub: "व्यवस्थापन पॅनेल",
+                consoleTitle: "भक्ती मोबाईल रिपेअर जॉब कार्ड कन्सोल",
+                consoleDesc: "दुरुस्तीची स्थिती अपडेट करण्यासाठी, नोंदी हटवण्यासाठी आणि व्यावसायिक महसूल तपासण्यासाठी थेट नियंत्रण कन्सोल.",
+                metTotJobs: "एकूण दाखल कामे",
+                metActRep: "दुरुस्ती सुरू",
+                metRdy: "डिलिव्हरीसाठी तयार",
+                metRev: "अपेक्षित महसूल",
+                thId: "जॉब आयडी",
+                thCust: "ग्राहक / संपर्क",
+                thDev: "मोबाईल मॉडेल",
+                thDefect: "समस्या / दोष",
+                thFinance: "खर्च / ॲडव्हान्स (बाकी)",
+                thStatus: "स्थिती अपडेट करा",
+                thActions: "क्रिया"
+            }
+        };
+
+        function applyBusinessProfile() {
+            const info = JSON.parse(localStorage.getItem('bhakti_biz_info')) || defaultBizInfo;
+            const lang = currentLang;
+
+            const bName = lang === 'en' ? info.name_en : info.name_mr;
+            const bTagline = lang === 'en' ? info.tagline_en : info.tagline_mr;
+            const bAddress = lang === 'en' ? info.address_en : info.address_mr;
+            const bAddressFull = lang === 'en' ? info.address_full_en : info.address_full_mr;
+            const bHours = lang === 'en' ? info.hours_en : info.hours_mr;
+            const bHoursFull = lang === 'en' ? info.hours_full_en : info.hours_full_mr;
+            const bTerm1 = lang === 'en' ? info.term1_en : info.term1_mr;
+            const bTerm2 = lang === 'en' ? info.term2_en : info.term2_mr;
+
+            // Header Elements
+            document.getElementById('top-bar-address-text').innerText = bAddress;
+            document.getElementById('top-bar-hours-text').innerText = bHours;
+            document.getElementById('top-bar-phone-link').href = `tel:${info.phone1.replace(/\s+/g, '')}`;
+            document.getElementById('top-bar-phone-text').innerHTML = `<i class="fa-solid fa-phone text-amber-400 mr-1"></i> ${info.phone1}`;
+            
+            // Nav Elements
+            document.getElementById('nav-brand-title').innerHTML = `${bName} <span class="text-xs bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Udgir</span>`;
+            document.getElementById('brand-tagline').innerText = bTagline;
+
+            // Hero Elements
+            const waQuery = encodeURIComponent(`Hello ${bName} Udgir, I want to inquire about a phone repair service.`);
+            document.getElementById('btn-wa-link').href = `https://wa.me/${info.whatsapp}?text=${waQuery}`;
+
+            // Receipt Preview Layout Elements
+            document.getElementById('receipt-brand-name').innerText = bName;
+            document.getElementById('receipt-brand-address').innerText = bAddress;
+            document.getElementById('receipt-brand-contact').innerText = `Contact: ${info.phone1} / ${info.phone2}`;
+            document.getElementById('rc-term1').innerText = bTerm1;
+            document.getElementById('rc-term2').innerText = bTerm2;
+
+            // Contact Panel Grid Elements
+            document.getElementById('ct-title').innerText = `${lang === 'en' ? 'Reach' : 'भेट द्या'} ${bName}`;
+            document.getElementById('ct-addr-desc').innerText = bAddressFull;
+            document.getElementById('ct-ph-desc').innerText = `${info.phone1} / ${info.phone2}`;
+            document.getElementById('ct-time-desc').innerHTML = bHoursFull;
+
+            // Footer Elements
+            document.getElementById('ft-brand-name').innerText = bName;
+            document.getElementById('ft-copy').innerText = `© 2026 ${bName} & Repairing Center, Udgir. All Rights Reserved.`;
+            document.getElementById('ft-local-title').innerText = bName;
+            document.getElementById('ft-local-desc').innerText = `${bAddressFull}. ${lang === 'en' ? 'Serving with dedication and reliable repairing solutions.' : 'विश्वासू आणि खात्रीशीर दुरुस्ती सोल्यूशन्ससह सेवा देत आहोत.'}`;
+        }
+
+        // Settings Modal Tab Switcher logic
+        function switchSettingsTab(tabName) {
+            // Hide all panes
+            document.getElementById('tab-pane-profile').classList.add('hidden');
+            document.getElementById('tab-pane-pricing').classList.add('hidden');
+            document.getElementById('tab-pane-multipliers').classList.add('hidden');
+
+            // Reset tab button states
+            const buttons = ['profile', 'pricing', 'multipliers'];
+            buttons.forEach(b => {
+                const btn = document.getElementById(`btn-tab-${b}`);
+                btn.className = "flex-1 py-3 text-center text-slate-500 border-b-2 border-transparent hover:text-slate-800 hover:bg-slate-100 transition flex items-center justify-center space-x-1";
+            });
+
+            // Activate target pane & button styling
+            document.getElementById(`tab-pane-${tabName}`).classList.remove('hidden');
+            const targetBtn = document.getElementById(`btn-tab-${tabName}`);
+            targetBtn.className = "flex-1 py-3 text-center text-indigo-600 border-b-2 border-indigo-600 transition flex items-center justify-center space-x-1";
+        }
+
+        function openSettingsModal() {
+            const isAuthorized = sessionStorage.getItem('bhakti_owner_authorized') === 'true';
+            if (isAuthorized) {
+                showActualSettingsModal();
+            } else {
+                document.getElementById('pin-input').value = '';
+                document.getElementById('pin-error-msg').classList.add('hidden');
+                document.getElementById('security-gate-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeSecurityGate() {
+            document.getElementById('security-gate-modal').classList.add('hidden');
+            document.getElementById('pin-input').value = '';
+            document.getElementById('pin-error-msg').classList.add('hidden');
+        }
+
+        function verifyOwnerPin() {
+            const entered = document.getElementById('pin-input').value.trim();
+            const actualPin = localStorage.getItem('bhakti_owner_pin') || '9422';
+
+            if (entered === actualPin) {
+                sessionStorage.setItem('bhakti_owner_authorized', 'true');
+                document.getElementById('security-gate-modal').classList.add('hidden');
+                document.getElementById('pin-input').value = '';
+                document.getElementById('pin-error-msg').classList.add('hidden');
+                showNotification(currentLang === 'en' ? "Access granted. Welcome Owner!" : "प्रवेश स्वीकृत. स्वागत आहे!", 'success');
+                showActualSettingsModal();
+            } else {
+                document.getElementById('pin-error-msg').classList.remove('hidden');
+                document.getElementById('pin-input').value = '';
+                showNotification(currentLang === 'en' ? "Invalid Owner PIN! Try again." : "चुकीचा सिक्युरिटी पिन! पुन्हा प्रयत्न करा.", 'error');
+            }
+        }
+
+        function lockOwnerConsole() {
+            sessionStorage.removeItem('bhakti_owner_authorized');
+            closeSettingsModal();
+            showNotification(currentLang === 'en' ? "Session locked successfully." : "सत्र यशस्वीरित्या लॉक केले आहे.", 'warning');
+        }
+
+        // Open Modal and Populate all Input Fields (Profile + Pricing + Multipliers)
+        function showActualSettingsModal() {
+            const info = JSON.parse(localStorage.getItem('bhakti_biz_info')) || defaultBizInfo;
+            const rates = JSON.parse(localStorage.getItem('bhakti_repair_rates')) || defaultBaseRates;
+            const multipliers = JSON.parse(localStorage.getItem('bhakti_brand_multipliers')) || defaultBrandMultipliers;
+            const currentPin = localStorage.getItem('bhakti_owner_pin') || '9422';
+            
+            // Populate Profile Data
+            document.getElementById('cfg-name-en').value = info.name_en;
+            document.getElementById('cfg-name-mr').value = info.name_mr;
+            document.getElementById('cfg-tagline-en').value = info.tagline_en;
+            document.getElementById('cfg-tagline-mr').value = info.tagline_mr;
+            document.getElementById('cfg-phone1').value = info.phone1;
+            document.getElementById('cfg-phone2').value = info.phone2;
+            document.getElementById('cfg-whatsapp').value = info.whatsapp;
+            document.getElementById('cfg-address-en').value = info.address_en;
+            document.getElementById('cfg-address-mr').value = info.address_mr;
+            document.getElementById('cfg-address-full-en').value = info.address_full_en;
+            document.getElementById('cfg-address-full-mr').value = info.address_full_mr;
+            document.getElementById('cfg-hours-en').value = info.hours_en;
+            document.getElementById('cfg-hours-mr').value = info.hours_mr;
+            document.getElementById('cfg-hours-full-en').value = info.hours_full_en;
+            document.getElementById('cfg-hours-full-mr').value = info.hours_full_mr;
+            document.getElementById('cfg-term1-en').value = info.term1_en;
+            document.getElementById('cfg-term1-mr').value = info.term1_mr;
+            document.getElementById('cfg-term2-en').value = info.term2_en;
+            document.getElementById('cfg-term2-mr').value = info.term2_mr;
+            document.getElementById('cfg-owner-pin').value = currentPin;
+
+            // Populate Base Cost Estimator Inputs
+            const issues = ['screen', 'battery', 'charging', 'camera', 'software', 'motherboard'];
+            issues.forEach(issue => {
+                document.getElementById(`rate-${issue}-budget`).value = rates[issue].budget;
+                document.getElementById(`rate-${issue}-mid`).value = rates[issue].mid;
+                document.getElementById(`rate-${issue}-premium`).value = rates[issue].premium;
+            });
+
+            // Populate Brand Multiplier Inputs
+            const brands = ['xiaomi', 'samsung', 'realme', 'vivo', 'oppo', 'oneplus', 'iphone'];
+            brands.forEach(b => {
+                document.getElementById(`mul-${b}`).value = multipliers[b];
+            });
+
+            // Default to first tab
+            switchSettingsTab('profile');
+
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        // Save Profiles + Rates + Multipliers in one simple Apply click
+        function saveBusinessInfoAndRates() {
+            // Validate secure PIN input
+            const newPin = document.getElementById('cfg-owner-pin').value.trim();
+            if (newPin.length !== 4 || !/^\d+$/.test(newPin)) {
+                showNotification(currentLang === 'en' ? "PIN must be exactly 4 numeric digits!" : "सुरक्षा पिन अचूक ४ अंकी संख्या असावी!", 'warning');
+                return;
+            }
+
+            // Save Profile fields
+            const updatedBiz = {
+                name_en: document.getElementById('cfg-name-en').value,
+                name_mr: document.getElementById('cfg-name-mr').value,
+                tagline_en: document.getElementById('cfg-tagline-en').value,
+                tagline_mr: document.getElementById('cfg-tagline-mr').value,
+                phone1: document.getElementById('cfg-phone1').value,
+                phone2: document.getElementById('cfg-phone2').value,
+                whatsapp: document.getElementById('cfg-whatsapp').value,
+                address_en: document.getElementById('cfg-address-en').value,
+                address_mr: document.getElementById('cfg-address-mr').value,
+                address_full_en: document.getElementById('cfg-address-full-en').value,
+                address_full_mr: document.getElementById('cfg-address-full-mr').value,
+                hours_en: document.getElementById('cfg-hours-en').value,
+                hours_mr: document.getElementById('cfg-hours-mr').value,
+                hours_full_en: document.getElementById('cfg-hours-full-en').value,
+                hours_full_mr: document.getElementById('cfg-hours-full-mr').value,
+                term1_en: document.getElementById('cfg-term1-en').value,
+                term1_mr: document.getElementById('cfg-term1-mr').value,
+                term2_en: document.getElementById('cfg-term2-en').value,
+                term2_mr: document.getElementById('cfg-term2-mr').value
+            };
+
+            // Save Costs inputs
+            const updatedRates = {};
+            const issues = ['screen', 'battery', 'charging', 'camera', 'software', 'motherboard'];
+            issues.forEach(issue => {
+                updatedRates[issue] = {
+                    budget: parseFloat(document.getElementById(`rate-${issue}-budget`).value) || 0,
+                    mid: parseFloat(document.getElementById(`rate-${issue}-mid`).value) || 0,
+                    premium: parseFloat(document.getElementById(`rate-${issue}-premium`).value) || 0
+                };
+            });
+
+            // Save Multipliers inputs
+            const updatedMultipliers = {};
+            const brands = ['xiaomi', 'samsung', 'realme', 'vivo', 'oppo', 'oneplus', 'iphone'];
+            brands.forEach(b => {
+                updatedMultipliers[b] = parseFloat(document.getElementById(`mul-${b}`).value) || 1.0;
+            });
+
+            // Push to LocalStorage
+            localStorage.setItem('bhakti_biz_info', JSON.stringify(updatedBiz));
+            localStorage.setItem('bhakti_repair_rates', JSON.stringify(updatedRates));
+            localStorage.setItem('bhakti_brand_multipliers', JSON.stringify(updatedMultipliers));
+            localStorage.setItem('bhakti_owner_pin', newPin);
+
+            // Refresh System Views
+            applyBusinessProfile();
+            runCostEstimation();
+            closeSettingsModal();
+            showNotification(currentLang === 'en' ? 'Shop profile, base rates & safety configurations updated!' : 'दुकानाचा तपशील, बेसिक दर आणि सुरक्षा तपशील यशस्वीरित्या साठवले आहेत!', 'success');
+        }
+
+        // Restore everything to system defaults
+        function restoreDefaultBizInfo() {
+            localStorage.setItem('bhakti_biz_info', JSON.stringify(defaultBizInfo));
+            localStorage.setItem('bhakti_repair_rates', JSON.stringify(defaultBaseRates));
+            localStorage.setItem('bhakti_brand_multipliers', JSON.stringify(defaultBrandMultipliers));
+            localStorage.setItem('bhakti_owner_pin', '9422');
+            
+            applyBusinessProfile();
+            runCostEstimation();
+            closeSettingsModal();
+            showNotification('System profile and estimator rates restored to factory defaults.', 'success');
+        }
+
+        function exportDatabase() {
+            const data = {
+                jobs: JSON.parse(localStorage.getItem('bhakti_jobs')) || [],
+                bizInfo: JSON.parse(localStorage.getItem('bhakti_biz_info')) || defaultBizInfo,
+                rates: JSON.parse(localStorage.getItem('bhakti_repair_rates')) || defaultBaseRates,
+                multipliers: JSON.parse(localStorage.getItem('bhakti_brand_multipliers')) || defaultBrandMultipliers,
+                pin: localStorage.getItem('bhakti_owner_pin') || '9422'
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "bhakti_mobile_backup_" + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            showNotification(currentLang === 'en' ? "Database exported successfully! Save this file securely." : "डेटाबेस यशस्वीरित्या डाउनलोड केला!", 'success');
+        }
+
+        function importDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.jobs && data.bizInfo && data.rates && data.multipliers && data.pin) {
+                        localStorage.setItem('bhakti_jobs', JSON.stringify(data.jobs));
+                        localStorage.setItem('bhakti_biz_info', JSON.stringify(data.bizInfo));
+                        localStorage.setItem('bhakti_repair_rates', JSON.stringify(data.rates));
+                        localStorage.setItem('bhakti_brand_multipliers', JSON.stringify(data.multipliers));
+                        localStorage.setItem('bhakti_owner_pin', data.pin);
+                        
+                        applyBusinessProfile();
+                        runCostEstimation();
+                        renderConsoleJobs();
+                        showActualSettingsModal();
+                        
+                        showNotification(currentLang === 'en' ? "Data restored successfully!" : "डेटाबेस यशस्वीरित्या रिस्टोअर केला!", 'success');
+                    } else {
+                        showNotification(currentLang === 'en' ? "Invalid backup file structure." : "चुकीची बॅकअप फाईल.", 'error');
+                    }
+                } catch (err) {
+                    showNotification(currentLang === 'en' ? "Error reading backup file." : "बॅकअप फाईल वाचताना त्रुटी.", 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function toggleLanguage() {
+            currentLang = (currentLang === 'en') ? 'mr' : 'en';
+            
+            document.getElementById('lang-btn-text').innerText = (currentLang === 'en') ? 'मराठी' : 'English';
+            
+            const activeLang = langData[currentLang];
+            
+            document.getElementById('nav-services').innerText = activeLang.navServices;
+            document.getElementById('nav-estimator').innerText = activeLang.navEstimator;
+            document.getElementById('nav-tracker').querySelector('span').innerText = activeLang.navTracker;
+            document.getElementById('hero-badge').innerText = activeLang.heroBadge;
+            document.getElementById('hero-title').innerHTML = activeLang.heroTitle;
+            document.getElementById('hero-desc').innerText = activeLang.heroDesc;
+            document.getElementById('btn-quote').innerText = activeLang.btnQuote;
+            document.getElementById('btn-wa').innerText = activeLang.btnWa;
+            document.getElementById('stat-1').innerText = activeLang.stat1;
+            document.getElementById('stat-2').innerText = activeLang.stat2;
+            document.getElementById('stat-3').innerText = activeLang.stat3;
+            document.getElementById('hero-track-title').innerText = activeLang.heroTrackTitle;
+            document.getElementById('hero-track-subtitle').innerText = activeLang.heroTrackSubtitle;
+            document.getElementById('lbl-jobid').innerText = activeLang.lblJobid;
+            document.getElementById('track-tip').innerHTML = `${activeLang.trackTip} <span class="text-amber-400 cursor-pointer underline font-mono" onclick="setAndTrack('BM-8801')">BM-8801</span> or <span class="text-amber-400 cursor-pointer underline font-mono" onclick="setAndTrack('BM-8802')">BM-8802</span>`;
+            document.getElementById('qc-1-t').innerText = activeLang.qc1T;
+            document.getElementById('qc-2-t').innerText = activeLang.qc2T;
+            document.getElementById('qc-3-t').innerText = activeLang.qc3T;
+            document.getElementById('qc-4-t').innerText = activeLang.qc4T;
+            
+            document.getElementById('services-title').innerText = activeLang.servicesTitle;
+            document.getElementById('services-subtitle').innerText = activeLang.servicesSubtitle;
+            
+            document.getElementById('s1-title').innerText = activeLang.s1Title;
+            document.getElementById('s1-desc').innerText = activeLang.s1Desc;
+            document.getElementById('s2-title').innerText = activeLang.s2Title;
+            document.getElementById('s2-desc').innerText = activeLang.s2Desc;
+            document.getElementById('s3-title').innerText = activeLang.s3Title;
+            document.getElementById('s3-desc').innerText = activeLang.s3Desc;
+            document.getElementById('s4-title').innerText = activeLang.s4Title;
+            document.getElementById('s4-desc').innerText = activeLang.s4Desc;
+            document.getElementById('s5-title').innerText = activeLang.s5Title;
+            document.getElementById('s5-desc').innerText = activeLang.s5Desc;
+            document.getElementById('s6-title').innerText = activeLang.s6Title;
+            document.getElementById('s6-desc').innerText = activeLang.s6Desc;
+
+            document.getElementById('est-sub').innerText = activeLang.estSub;
+            document.getElementById('est-title').innerText = activeLang.estTitle;
+            document.getElementById('est-desc').innerText = activeLang.estDesc;
+            document.getElementById('lbl-brand').innerText = activeLang.lblBrand;
+            document.getElementById('lbl-tier').innerText = activeLang.lblTier;
+            document.getElementById('lbl-issue').innerText = activeLang.lblIssue;
+            document.getElementById('est-notewriter').innerText = activeLang.estNotewriter;
+            document.getElementById('est-summary-title').innerText = activeLang.estSummaryTitle;
+            document.getElementById('sm-brand').innerText = activeLang.smBrand;
+            document.getElementById('sm-tier').innerText = activeLang.smTier;
+            document.getElementById('sm-issue').innerText = activeLang.smIssue;
+            document.getElementById('sm-spare').innerText = activeLang.smSpare;
+            document.getElementById('sm-service').innerText = activeLang.smService;
+            document.getElementById('est-tot-lbl').innerText = activeLang.estTotLbl;
+            document.getElementById('est-btn-send').innerText = activeLang.estBtnSend;
+            document.getElementById('est-btn-copy').innerText = activeLang.estBtnCopy;
+
+            document.getElementById('jc-sub').innerText = activeLang.jcSub;
+            document.getElementById('jc-title').innerText = activeLang.jcTitle;
+            document.getElementById('jc-desc').innerText = activeLang.jcDesc;
+            document.getElementById('jc-demo-btn').innerText = activeLang.jcDemoBtn;
+            document.getElementById('jc-lbl-name').innerText = activeLang.jcLblName;
+            document.getElementById('jc-lbl-phone').innerText = activeLang.jcLblPhone;
+            document.getElementById('jc-lbl-device').innerText = activeLang.jcLblDevice;
+            document.getElementById('jc-lbl-prob').innerText = activeLang.jcLblProb;
+            document.getElementById('jc-lbl-cost').innerText = activeLang.jcLblCost;
+            document.getElementById('jc-lbl-adv').innerText = activeLang.jcLblAdv;
+            document.getElementById('jc-lbl-status').innerText = activeLang.jcLblStatus;
+            document.getElementById('jc-btn-create').innerText = activeLang.jcBtnCreate;
+            document.getElementById('jc-btn-reset').innerText = activeLang.jcBtnReset;
+
+            document.getElementById('rc-lbl-cust').innerText = activeLang.rcLblCust;
+            document.getElementById('rc-lbl-ph').innerText = activeLang.rcLblPh;
+            document.getElementById('rc-lbl-dev').innerText = activeLang.rcLblDev;
+            document.getElementById('rc-lbl-defect').innerText = activeLang.rcLblDefect;
+            document.getElementById('rc-lbl-stats').innerText = activeLang.rcLblStats;
+            document.getElementById('rc-lbl-tot').innerText = activeLang.rcLblTot;
+            document.getElementById('rc-lbl-adv-paid').innerText = activeLang.rcLblAdvPaid;
+            document.getElementById('rc-lbl-bal').innerText = activeLang.rcLblBal;
+            document.getElementById('rc-lbl-terms').innerText = activeLang.rcLblTerms;
+            document.getElementById('rc-btn-share').innerText = activeLang.rcBtnShare;
+            document.getElementById('rc-btn-print').innerText = activeLang.rcBtnPrint;
+
+            document.getElementById('tr-title').innerText = activeLang.trTitle;
+            document.getElementById('tr-subtitle').innerText = activeLang.trSubtitle;
+            document.getElementById('tr-lbl-input').innerText = activeLang.trLblInput;
+            document.getElementById('tr-btn-submit').innerText = activeLang.trBtnSubmit;
+            document.getElementById('tr-res-hdr').innerText = activeLang.trResHdr;
+            
+            document.getElementById('st1-title').innerText = activeLang.st1Title;
+            document.getElementById('st1-desc').innerText = activeLang.st1Desc;
+            document.getElementById('st1-time').innerText = activeLang.st1Time;
+            document.getElementById('st2-title').innerText = activeLang.st2Title;
+            document.getElementById('st2-desc').innerText = activeLang.st2Desc;
+            document.getElementById('st3-title').innerText = activeLang.st3Title;
+            document.getElementById('st3-desc').innerText = activeLang.st3Desc;
+            document.getElementById('st4-title').innerText = activeLang.st4Title;
+            document.getElementById('st4-desc').innerText = activeLang.st4Desc;
+            document.getElementById('tr-emp-title').innerText = activeLang.trEmpTitle;
+            document.getElementById('tr-emp-subtitle').innerText = activeLang.trEmpSubtitle;
+
+            document.getElementById('ct-sub').innerText = activeLang.ctSub;
+            document.getElementById('ct-desc').innerText = activeLang.ctDesc;
+            document.getElementById('ct-addr-lbl').innerText = activeLang.ctAddrLbl;
+            document.getElementById('ct-ph-lbl').innerText = activeLang.ctPhLbl;
+            document.getElementById('ct-time-lbl').innerText = activeLang.ctTimeLbl;
+            document.getElementById('ct-btn-map').innerText = activeLang.ctBtnMap;
+
+            document.getElementById('ft-about').innerText = activeLang.ftAbout;
+            document.getElementById('ft-links-title').innerText = activeLang.ftLinksTitle;
+            document.getElementById('ft-local-title').innerText = activeLang.ftLocalTitle;
+            document.getElementById('ft-copy').innerText = activeLang.ftCopy;
+
+            // Translate Owner Console Headers
+            document.getElementById('console-sub-lbl').innerText = activeLang.consoleSub;
+            document.getElementById('console-title-lbl').innerText = activeLang.consoleTitle;
+            document.getElementById('console-desc-lbl').innerText = activeLang.consoleDesc;
+            document.getElementById('metric-tot-jobs').innerText = activeLang.metTotJobs;
+            document.getElementById('metric-act-rep').innerText = activeLang.metActRep;
+            document.getElementById('metric-rdy').innerText = activeLang.metRdy;
+            document.getElementById('metric-rev').innerText = activeLang.metRev;
+            document.getElementById('th-id').innerText = activeLang.thId;
+            document.getElementById('th-cust').innerText = activeLang.thCust;
+            document.getElementById('th-dev').innerText = activeLang.thDev;
+            document.getElementById('th-defect').innerText = activeLang.thDefect;
+            document.getElementById('th-finance').innerText = activeLang.thFinance;
+            document.getElementById('th-status').innerText = activeLang.thStatus;
+            document.getElementById('th-actions').innerText = activeLang.thActions;
+
+            // Translate Backup UI if visible
+            if(document.getElementById('cfg-btn-export')) {
+                document.getElementById('cfg-btn-export').innerText = (currentLang === 'mr') ? "डेटाबेस बॅकअप / डाउनलोड करा" : "Export / Backup All Data";
+                document.getElementById('cfg-btn-import').innerText = (currentLang === 'mr') ? "डेटाबेस रिस्टोअर करा" : "Import / Restore Data";
+                document.getElementById('cfg-db-note').innerText = (currentLang === 'mr') ? "हे ॲप इंटरनेटशिवाय तुमच्या ब्राउझरमध्ये चालते. तुमचा डेटा सुरक्षित ठेवण्यासाठी वरील बटणांचा वापर करून सर्व डेटाची JSON फाईल डाउनलोड करून ठेवा." : "Since this app runs entirely in your browser without a backend server, use these buttons to backup your jobs, pricing, and settings to a JSON file. Store this file safely to prevent data loss if you clear browser history or switch devices.";
+            }
+
+            applyBusinessProfile();
+            runCostEstimation();
+            renderConsoleJobs();
+            
+            showNotification(currentLang === 'mr' ? 'भाषा बदलून मराठी करण्यात आली आहे.' : 'Language switched to English.', 'success');
+        }
+
+        let selectedIssue = 'screen';
+
+        function selectEstimator(issue) {
+            selectedIssue = issue;
+            const buttons = document.querySelectorAll('.issue-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active', 'border-amber-500', 'bg-amber-500/10', 'text-slate-900', 'font-bold');
+                btn.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-700', 'font-semibold');
+                const btnText = btn.querySelector('span').innerText.toLowerCase();
+                
+                if (btnText.includes(issue) || (issue === 'charging' && btnText.includes('charging')) || (issue === 'motherboard' && btnText.includes('dead'))) {
+                    btn.classList.add('active', 'border-amber-500', 'bg-amber-500/10', 'text-slate-900', 'font-bold');
+                    btn.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-700', 'font-semibold');
+                }
+            });
+            runCostEstimation();
+        }
+
+        function toggleIssueSelection(issue, elem) {
+            selectedIssue = issue;
+            const buttons = document.querySelectorAll('.issue-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active', 'border-amber-500', 'bg-amber-500/10', 'text-slate-900', 'font-bold');
+                btn.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-700', 'font-semibold');
+                const icon = btn.querySelector('i');
+                if (icon) icon.className = icon.className.replace('text-amber-600', 'text-slate-500');
+            });
+
+            elem.classList.add('active', 'border-amber-500', 'bg-amber-500/10', 'text-slate-900', 'font-bold');
+            elem.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-700', 'font-semibold');
+            const icon = elem.querySelector('i');
+            if (icon) icon.className = icon.className.replace('text-slate-500', 'text-amber-600');
+
+            runCostEstimation();
+        }
+
+        function runCostEstimation() {
+            // Read values dynamically from localStorage to support on-the-fly custom pricing edits
+            const baseRates = JSON.parse(localStorage.getItem('bhakti_repair_rates')) || defaultBaseRates;
+            const brandMultipliers = JSON.parse(localStorage.getItem('bhakti_brand_multipliers')) || defaultBrandMultipliers;
+
+            const brand = document.getElementById('est-brand').value;
+            const tier = document.getElementById('est-tier').value;
+            
+            const baseCost = baseRates[selectedIssue][tier];
+            const multiplier = brandMultipliers[brand];
+            
+            const rawPartCost = Math.round(baseCost * multiplier);
+            const labFee = Math.round(rawPartCost * 0.18 + 150); // GST logic + fit fee
+            const totalEstimated = rawPartCost + labFee;
+
+            document.getElementById('summary-brand').innerText = brand;
+            document.getElementById('summary-tier').innerText = tier + " range";
+            
+            let translatedIssue = "Broken Screen";
+            if (selectedIssue === 'battery') translatedIssue = currentLang === 'en' ? "Battery Drain" : "बॅटरी डॅमेज";
+            if (selectedIssue === 'charging') translatedIssue = currentLang === 'en' ? "Charging Port" : "चार्जिंग सॉकेट बिघाड";
+            if (selectedIssue === 'camera') translatedIssue = currentLang === 'en' ? "Camera Crack" : "कॅमेरा बिघाड";
+            if (selectedIssue === 'software') translatedIssue = currentLang === 'en' ? "Software Hang" : "सॉफ्टवेअर हँग / लॉक";
+            if (selectedIssue === 'motherboard') translatedIssue = currentLang === 'en' ? "Motherboard Fault" : "मदरबोर्ड / डेड फोन";
+
+            document.getElementById('summary-issue').innerText = translatedIssue;
+            document.getElementById('summary-spare-cost').innerText = `₹${rawPartCost.toLocaleString('en-IN')}`;
+            document.getElementById('summary-lab-cost').innerText = `₹${labFee.toLocaleString('en-IN')}`;
+            document.getElementById('summary-total').innerText = `₹${totalEstimated.toLocaleString('en-IN')}`;
+        }
+
+        function copyEstimateToClipboard() {
+            const info = JSON.parse(localStorage.getItem('bhakti_biz_info')) || defaultBizInfo;
+            const brand = document.getElementById('summary-brand').innerText;
+            const tier = document.getElementById('summary-tier').innerText;
+            const issue = document.getElementById('summary-issue').innerText;
+            const total = document.getElementById('summary-total').innerText;
+
+            const textToCopy = `${info.name_en} Repair Quote:\n- Brand: ${brand}\n- Tier: ${tier}\n- Defect: ${issue}\n- Total Apx Cost: ${total}\nAddress: ${info.address_en}. Contact: ${info.phone1}`;
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            showNotification(currentLang === 'en' ? "Estimated receipt quote copied to clipboard!" : "खर्च अंदाज क्लिपबोर्डवर यशस्वीरित्या कॉपी केला!", 'success');
+        }
+
+        function submitInquiryWhatsApp() {
+            const info = JSON.parse(localStorage.getItem('bhakti_biz_info')) || defaultBizInfo;
+            const brand = document.getElementById('summary-brand').innerText;
+            const tier = document.getElementById('summary-tier').innerText;
+            const issue = document.getElementById('summary-issue').innerText;
+            const total = document.getElementById('summary-total').innerText;
+
+            const query = encodeURIComponent(`Hello ${info.name_en} Udgir, I need a repair quote estimate for my phone:\n- Brand: ${brand}\n- Category: ${tier}\n- Defect issue: ${issue}\n- Expected Estimate: ${total}\nPlease let me know when I can bring my device to your shop.`);
+            
+            const cleanWa = info.whatsapp.replace(/\D/g, '');
+            window.open(`https://wa.me/${cleanWa}?text=${query}`, '_blank');
+        }
+
+        function handleGenerateJobCard(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('jc-name').value.trim();
+            const phone = document.getElementById('jc-phone').value.trim();
+            const device = document.getElementById('jc-device').value.trim();
+            const issue = document.getElementById('jc-issue').value.trim();
+            const cost = parseInt(document.getElementById('jc-cost').value) || 0;
+            const advance = parseInt(document.getElementById('jc-advance').value) || 0;
+            const status = document.getElementById('jc-status').value;
+
+            const ticketId = `BM-${Math.floor(1000 + Math.random() * 9000)}`;
+            const today = new Date().toISOString().split('T')[0];
+
+            const newJob = {
+                id: ticketId,
+                name: name,
+                phone: phone,
+                device: device,
+                issue: issue,
+                cost: cost,
+                advance: advance,
+                status: status,
+                date: today
+            };
+
+            let jobs = JSON.parse(localStorage.getItem('bhakti_jobs')) || [];
+            jobs.unshift(newJob);
+            localStorage.setItem('bhakti_jobs', JSON.stringify(jobs));
+
+            // Populate preview
+            document.getElementById('receipt-id').innerText = ticketId;
+            document.getElementById('receipt-date').innerText = today;
+            document.getElementById('receipt-name').innerText = name;
+            document.getElementById('receipt-phone').innerText = phone;
+            document.getElementById('receipt-device').innerText = device;
+            document.getElementById('receipt-issue').innerText = issue;
+            document.getElementById('receipt-status').innerText = status;
+            
+            const statusBadge = document.getElementById('receipt-status');
+            if (status === 'Ready for Pickup') {
+                statusBadge.className = 'bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]';
+            } else if (status === 'Repairing') {
+                statusBadge.className = 'bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]';
+            } else {
+                statusBadge.className = 'bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]';
+            }
+
+            document.getElementById('receipt-cost').innerText = `₹${cost.toLocaleString('en-IN')}`;
+            document.getElementById('receipt-advance').innerText = `₹${advance.toLocaleString('en-IN')}`;
+            document.getElementById('receipt-balance').innerText = `₹${(cost - advance).toLocaleString('en-IN')}`;
+
+            renderConsoleJobs();
+            
+            showNotification(currentLang === 'en' ? `Job Card ${ticketId} created and saved successfully!` : `जॉब कार्ड ${ticketId} यशस्वीरीत्या जतन केले गेले आहे!`, 'success');
+            document.getElementById('print-receipt-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function loadDemoJobCard() {
+            document.getElementById('jc-name').value = "Sandip Udgirkar";
+            document.getElementById('jc-phone').value = "9422927694";
+            document.getElementById('jc-device').value = "Samsung Galaxy S23 Ultra";
+            document.getElementById('jc-issue').value = "Water recovery deep diagnostics";
+            document.getElementById('jc-cost').value = "2800";
+            document.getElementById('jc-advance').value = "500";
+            document.getElementById('jc-status').value = "Diagnosing";
+            showNotification("Demo details populated into internal form.", 'success');
+        }
+
+        function resetJobCardForm() {
+            document.getElementById('jobcard-form').reset();
+            showNotification("Form fields cleared.");
+        }
+
+        function shareReceiptWhatsApp() {
+            const info = JSON.parse(localStorage.getItem('bhakti_biz_info')) || defaultBizInfo;
+            const ticketId = document.getElementById('receipt-id').innerText;
+            const name = document.getElementById('receipt-name').innerText;
+            const device = document.getElementById('receipt-device').innerText;
+            const issue = document.getElementById('receipt-issue').innerText;
+            const balance = document.getElementById('receipt-balance').innerText;
+            const status = document.getElementById('receipt-status').innerText;
+
+            const text = encodeURIComponent(`${info.name_en} - Digital Job Card Receipt\n\nTicket ID: ${ticketId}\nClient Name: ${name}\nDevice: ${device}\nReported Defect: ${issue}\nCurrent Status: ${status}\nPending Balance: ${balance}\n\nPlease visit our shop at Mondha Road when repair status changes to "Ready for Pickup".`);
+            
+            let rPhone = document.getElementById('receipt-phone').innerText.replace(/\D/g, '');
+            if(rPhone.length === 10) rPhone = '91' + rPhone;
+            window.open(`https://wa.me/${rPhone}?text=${text}`, '_blank');
+        }
+
+        function sendLiveWhatsAppUpdate(id) {
+            const jobs = JSON.parse(localStorage.getItem('bhakti_jobs')) || [];
+            const job = jobs.find(j => j.id === id);
+            if (!job) return;
+
+            const info = JSON.parse(localStorage.getItem('bhakti_biz_info')) || defaultBizInfo;
+            const shopName = currentLang === 'en' ? info.name_en : info.name_mr;
+            
+            let statusExplainEn = "";
+            let statusExplainMr = "";
+
+            if (job.status === 'Diagnosing') {
+                statusExplainEn = "is currently undergoing deep diagnosis in our testing lab.";
+                statusExplainMr = "ची सखोल प्रयोगशाळा तपासणी (Diagnosis) सुरू आहे.";
+            } else if (job.status === 'Repairing') {
+                statusExplainEn = "is actively being repaired by our certified micro-technicians.";
+                statusExplainMr = "च्या दुरुस्तीचे काम (Repairing) प्रगतीपथावर आहे.";
+            } else if (job.status === 'Ready for Pickup') {
+                statusExplainEn = "has been fully repaired, extensively tested, and is now ready for collection! Please visit us to collect it.";
+                statusExplainMr = "यशस्वीरित्या दुरुस्त आणि तपासणी करून तयार (Ready for Pickup) গান্ধ) आहे! कृपया घेऊन जाण्यासाठी दुकानाला भेट द्यावी.";
+            }
+
+            const est = parseInt(job.cost) || 0;
+            const adv = parseInt(job.advance) || 0;
+            const bal = est - adv;
+
+            const msgEn = `📢 *Repair Status Update* - *${shopName}*\n\nHello *${job.name}*,\nYour device *${job.device}* (Job ID: *${job.id}*) ${statusExplainEn}\n\n*Finance Summary:*\n- Total Est: ₹${est}\n- Advance Paid: ₹${adv}\n- Remaining Balance: *₹${bal}*\n\nThank you for choosing Bhakti Mobile, Udgir.\n📞 Support: ${info.phone1}`;
+            
+            const msgMr = `📢 *मोबाईल रिपेअर अपडेट* - *${shopName}*\n\nनमस्कार *${job.name}*,\nतुमचा मोबाईल *${job.device}* (जॉब आयडी: *${job.id}*) ${statusExplainMr}\n\n*खर्च तपशील:*\n- अंदाजित खर्च: ₹${est}\n- ॲडव्हान्स जमा: ₹${adv}\n- बाकी रक्कम: *₹${bal}*\n\nविश्वासू सेवेसाठी धन्यवाद - भक्ती मोबाईल, उदगीर.\n📞 संपर्क: ${info.phone1}`;
+
+            const finalMsg = currentLang === 'en' ? msgEn : msgMr;
+            const query = encodeURIComponent(finalMsg);
+            
+            let jPhone = String(job.phone).replace(/\D/g, '');
+            if(jPhone.length === 10) jPhone = '91' + jPhone;
+            
+            window.open(`https://wa.me/${jPhone}?text=${query}`, '_blank');
+            showNotification(currentLang === 'en' ? `WhatsApp status update triggered for ${job.name}!` : `${job.name} यांच्यासाठी व्हॉट्सॲप स्टेटस अपडेट पाठवले!`, 'success');
+        }
+
+        function renderConsoleJobs() {
+            const searchQuery = document.getElementById('console-search').value.toLowerCase().trim();
+            const filterStatus = document.getElementById('console-filter-status').value;
+            const jobs = JSON.parse(localStorage.getItem('bhakti_jobs')) || [];
+            const tbody = document.getElementById('console-jobs-tbody');
+            const emptyState = document.getElementById('console-empty-state');
+            
+            tbody.innerHTML = '';
+
+            let totalJobs = jobs.length;
+            let repairingCount = jobs.filter(j => j.status === 'Repairing').length;
+            let readyCount = jobs.filter(j => j.status === 'Ready for Pickup').length;
+            let expectedRevenue = jobs.reduce((sum, j) => sum + (parseInt(j.cost) || 0), 0);
+
+            document.getElementById('metric-total-count').innerText = totalJobs;
+            document.getElementById('metric-repairing-count').innerText = repairingCount;
+            document.getElementById('metric-ready-count').innerText = readyCount;
+            document.getElementById('metric-revenue-count').innerText = `₹${expectedRevenue.toLocaleString('en-IN')}`;
+
+            const filteredJobs = jobs.filter(job => {
+                const matchesSearch = job.id.toLowerCase().includes(searchQuery) || 
+                                      job.name.toLowerCase().includes(searchQuery) || 
+                                      job.phone.includes(searchQuery) ||
+                                      job.device.toLowerCase().includes(searchQuery);
+                const matchesStatus = filterStatus === 'all' || job.status === filterStatus;
+                return matchesSearch && matchesStatus;
+            });
+
+            if (filteredJobs.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredJobs.forEach(job => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/60 border-b border-slate-800 transition duration-150";
+
+                const est = parseInt(job.cost) || 0;
+                const adv = parseInt(job.advance) || 0;
+                const bal = est - adv;
+
+                let badgeClass = '';
+                if (job.status === 'Ready for Pickup') {
+                    badgeClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                } else if (job.status === 'Repairing') {
+                    badgeClass = 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+                } else {
+                    badgeClass = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                }
+
+                tr.innerHTML = `
+                    <td class="p-4 font-mono font-bold text-amber-400 tracking-wider">${job.id}</td>
+                    <td class="p-4">
+                        <div class="font-bold text-slate-100">${job.name}</div>
+                        <div class="text-[10px] text-slate-500 font-mono mt-0.5">${job.phone}</div>
+                    </td>
+                    <td class="p-4 font-semibold text-slate-300">${job.device}</td>
+                    <td class="p-4 text-slate-400 max-w-xs truncate">${job.issue}</td>
+                    <td class="p-4 font-mono text-slate-300">
+                        <div>₹${est} <span class="text-[10px] text-slate-500">Est</span></div>
+                        <div class="text-[10px] text-emerald-500">₹${adv} Paid</div>
+                        <div class="text-[11px] font-bold text-indigo-400 border-t border-slate-800/60 pt-0.5">₹${bal} Due</div>
+                    </td>
+                    <td class="p-4">
+                        <select onchange="updateConsoleJobStatus('${job.id}', this.value)" class="bg-slate-900 text-slate-200 border border-slate-800 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold cursor-pointer text-[11px]">
+                            <option value="Diagnosing" ${job.status === 'Diagnosing' ? 'selected' : ''}>Diagnosing</option>
+                            <option value="Repairing" ${job.status === 'Repairing' ? 'selected' : ''}>Repairing</option>
+                            <option value="Ready for Pickup" ${job.status === 'Ready for Pickup' ? 'selected' : ''}>Ready for Pickup</option>
+                        </select>
+                        <div class="mt-1.5">
+                            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full uppercase tracking-wider ${badgeClass}">${job.status}</span>
+                        </div>
+                    </td>
+                    <td class="p-4 text-right">
+                        <div class="flex items-center justify-end space-x-1">
+                            <button onclick="sendLiveWhatsAppUpdate('${job.id}')" title="Send Live WhatsApp Status Update" class="w-8 h-8 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg flex items-center justify-center transition">
+                                <i class="fa-brands fa-whatsapp text-base"></i>
+                            </button>
+                            <button onclick="setAndTrack('${job.id}')" title="Track Progress" class="w-8 h-8 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg flex items-center justify-center transition">
+                                <i class="fa-solid fa-route"></i>
+                            </button>
+                            <button onclick="loadJobToReceipt('${job.id}')" title="View/Print Receipt" class="w-8 h-8 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg flex items-center justify-center transition">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                            <button onclick="deleteConsoleJob('${job.id}')" title="Delete Record" class="w-8 h-8 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg flex items-center justify-center transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateConsoleJobStatus(id, newStatus) {
+            let jobs = JSON.parse(localStorage.getItem('bhakti_jobs')) || [];
+            const index = jobs.findIndex(j => j.id === id);
+            
+            if (index !== -1) {
+                jobs[index].status = newStatus;
+                localStorage.setItem('bhakti_jobs', JSON.stringify(jobs));
+                renderConsoleJobs();
+                
+                const activeTrackingId = document.getElementById('tr-res-id').innerText;
+                if (activeTrackingId === id) {
+                    executeStatusTrack();
+                }
+                
+                showNotification(currentLang === 'en' ? `Status of job ${id} updated to: ${newStatus}` : `काम ${id} ची स्थिती अपडेट झाली: ${newStatus}`, 'success');
+            }
+        }
+
+        function loadJobToReceipt(id) {
+            const jobs = JSON.parse(localStorage.getItem('bhakti_jobs')) || [];
+            const job = jobs.find(j => j.id === id);
+
+            if (job) {
+                document.getElementById('receipt-id').innerText = job.id;
+                document.getElementById('receipt-date').innerText = job.date;
+                document.getElementById('receipt-name').innerText = job.name;
+                document.getElementById('receipt-phone').innerText = job.phone;
+                document.getElementById('receipt-device').innerText = job.device;
+                document.getElementById('receipt-issue').innerText = job.issue;
+                document.getElementById('receipt-status').innerText = job.status;
+
+                const statusBadge = document.getElementById('receipt-status');
+                if (job.status === 'Ready for Pickup') {
+                    statusBadge.className = 'bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]';
+                } else if (job.status === 'Repairing') {
+                    statusBadge.className = 'bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]';
+                } else {
+                    statusBadge.className = 'bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]';
+                }
+
+                const est = parseInt(job.cost) || 0;
+                const adv = parseInt(job.advance) || 0;
+                document.getElementById('receipt-cost').innerText = `₹${est.toLocaleString('en-IN')}`;
+                document.getElementById('receipt-advance').innerText = `₹${adv.toLocaleString('en-IN')}`;
+                document.getElementById('receipt-balance').innerText = `₹${(est - adv).toLocaleString('en-IN')}`;
+
+                document.getElementById('print-receipt-section').scrollIntoView({ behavior: 'smooth' });
+                showNotification("Job details loaded to receipt preview.");
+            }
+        }
+
+        let pendingDeleteId = null;
+
+        function deleteConsoleJob(id) {
+            pendingDeleteId = id;
+            document.getElementById('del-modal-title').innerText = `Delete Job ${id}?`;
+            document.getElementById('del-modal-confirm-btn').onclick = executeConfirmedDelete;
+            document.getElementById('delete-confirm-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteConfirmModal() {
+            document.getElementById('delete-confirm-modal').classList.add('hidden');
+            pendingDeleteId = null;
+        }
+
+        function executeConfirmedDelete() {
+            if (pendingDeleteId) {
+                let jobs = JSON.parse(localStorage.getItem('bhakti_jobs')) || [];
+                const updatedJobs = jobs.filter(j => j.id !== pendingDeleteId);
+                localStorage.setItem('bhakti_jobs', JSON.stringify(updatedJobs));
+                renderConsoleJobs();
+                showNotification(`Job card ${pendingDeleteId} deleted successfully.`, 'warning');
+            }
+            closeDeleteConfirmModal();
+        }
+
+        function executeStatusTrack() {
+            const inputId = document.getElementById('track-id-input').value.trim().toUpperCase();
+            
+            if (!inputId) {
+                showNotification("Please enter a valid Job ID code.", 'warning');
+                return;
+            }
+
+            const jobs = JSON.parse(localStorage.getItem('bhakti_jobs')) || [];
+            const targetJob = jobs.find(j => j.id === inputId);
+
+            const resultContainer = document.getElementById('tracker-result');
+            const emptyState = document.getElementById('tracker-empty-state');
+
+            if (!targetJob) {
+                showNotification(`Job Ticket ${inputId} was not found. Please review the ID spelling.`, 'warning');
+                resultContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('tr-res-id').innerText = targetJob.id;
+            document.getElementById('tr-res-device').innerText = targetJob.device;
+            document.getElementById('tr-res-name').innerText = targetJob.name;
+
+            const steps = ['intake', 'diagnosing', 'repairing', 'ready'];
+            steps.forEach(step => {
+                const indicator = document.getElementById(`step-indicator-${step}`);
+                const title = document.getElementById(`st${steps.indexOf(step)+1}-title`);
+                const desc = document.getElementById(`st${steps.indexOf(step)+1}-desc`);
+
+                indicator.className = "absolute -left-[27px] w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs border-4 border-white shadow-sm";
+                title.className = "font-bold text-slate-400";
+                if(desc) desc.className = "text-xs text-slate-400 mt-1";
+            });
+
+            const activeStatus = targetJob.status;
+            
+            setStepActive('intake', true);
+
+            if (activeStatus === 'Diagnosing') {
+                setStepActive('diagnosing', true);
+            } else if (activeStatus === 'Repairing') {
+                setStepActive('diagnosing', true);
+                setStepActive('repairing', true);
+            } else if (activeStatus === 'Ready for Pickup') {
+                setStepActive('diagnosing', true);
+                setStepActive('repairing', true);
+                setStepActive('ready', true);
+            }
+
+            emptyState.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
+            showNotification(`Progress for ${targetJob.id} updated! Current stage: ${activeStatus}`, 'success');
+        }
+
+        function setStepActive(stepId, isActive) {
+            const steps = ['intake', 'diagnosing', 'repairing', 'ready'];
+            const stepNum = steps.indexOf(stepId) + 1;
+            const indicator = document.getElementById(`step-indicator-${stepId}`);
+            const title = document.getElementById(`st${stepNum}-title`);
+            const desc = document.getElementById(`st${stepNum}-desc`);
+
+            if (isActive) {
+                indicator.className = "absolute -left-[27px] w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs border-4 border-white shadow-sm ring-4 ring-indigo-500/20";
+                title.className = "font-bold text-slate-900";
+                if (desc) desc.className = "text-xs text-slate-600 mt-1";
+                indicator.innerHTML = `<i class="fa-solid fa-check text-[10px]"></i>`;
+            }
+        }
+
+        function setAndTrack(id) {
+            document.getElementById('track-id-input').value = id;
+            document.getElementById('tracker').scrollIntoView({ behavior: 'smooth' });
+            executeStatusTrack();
+        }
+
+        function handleQuickTrack() {
+            const quickId = document.getElementById('quick-track-id').value.trim();
+            if (!quickId) {
+                showNotification("Please specify a valid Job ID.", 'warning');
+                return;
+            }
+            setAndTrack(quickId);
+        }
+
+        window.onload = function() {
+            applyBusinessProfile();
+            runCostEstimation();
+            renderConsoleJobs();
+        };
+    </script>
+</body>
+</html>
